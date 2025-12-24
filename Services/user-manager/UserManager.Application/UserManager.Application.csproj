@@ -10,4 +10,8 @@
     <ProjectReference Include="..\UserManager.Domain\UserManager.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Flunt" Version="2.0.5" />
+  </ItemGroup>
+
 </Project>

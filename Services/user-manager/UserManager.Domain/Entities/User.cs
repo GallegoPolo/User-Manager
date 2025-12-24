@@ -1,6 +1,9 @@
-﻿namespace UserManager.Domain.Entities;
+﻿using Flunt.Notifications;
+using Flunt.Validations;
 
-public class User
+namespace UserManager.Domain.Entities;
+
+public class User : Notifiable<Notification>
 {
     public Guid Id { get; private set; }
     public string Name { get; private set; }
@@ -13,11 +16,11 @@ public class User
         Name = name;
         Email = email;
         CreatedAt = DateTime.UtcNow;
-    }
 
-    public void Update(string name, string email)
-    {
-        Name = name;
-        Email = email;
+        AddNotifications(new Contract<Notification>()
+            .Requires()
+            .IsNotNullOrWhiteSpace(Name, nameof(Name), "Name is required")
+            .IsEmail(Email, nameof(Email), "Invalid email")
+        );
     }
 }
