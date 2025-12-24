@@ -1,5 +1,7 @@
-﻿using UserManager.Application.UseCases.Users.Handlers;
+﻿using Microsoft.EntityFrameworkCore;
+using UserManager.Application.UseCases.Users.Handlers;
 using UserManager.Domain.Interfaces;
+using UserManager.Infrastructure.Persistence;
 using UserManager.Infrastructure.Repositories;
 
 namespace UserManager.Api.Extensions
@@ -17,5 +19,16 @@ namespace UserManager.Api.Extensions
             services.AddScoped<IUserRepository, UserRepository>();
             return services;
         }
+
+        public static IServiceCollection AddPersistence(this IServiceCollection services, ConfigurationManager configuration)
+        {
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+            services.AddDbContext<UserManagerDbContext>(options => options.UseSqlServer(connectionString));
+            services.AddScoped<IUserRepository, UserRepository>();
+
+            return services;
+        }
+
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Reflection.Metadata;
+using UserManager.Api.Contracts.Requests;
+using UserManager.Api.Contracts.Responses;
 using UserManager.Application.UseCases.Users.Commands;
 using UserManager.Application.UseCases.Users.Handlers;
 
@@ -9,7 +10,9 @@ namespace UserManager.Api.Controllers
     [Route("api/users")]
     public class UserController : ControllerBase
     {
-        public UsersController(CreateUserHandler handler)
+        private readonly CreateUserHandler _handler;
+
+        public UserController(CreateUserHandler handler)
         {
             _handler = handler;
         }
@@ -17,11 +20,16 @@ namespace UserManager.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(CreateUserRequest request)
         {
-            var result = await _handler.Handle(
-                new CreateUserCommand(request.Name, request.Email)
-            );
+            var result = await _handler.Handle(new CreateUserCommand(request.Name, request.Email));
 
-            return CreatedAtAction(nameof(Create), new { id = result.UserId }, result);
+            if (result.Errors != null && result.Errors.Any())
+                return BadRequest(result.Errors);
+
+            if (result.UserId == null)
+                return StatusCode(StatusCodes.Status500InternalServerError, "UserId was not generated.");
+
+            var response = new CreateUserResponse(result.UserId.Value);
+            return CreatedAtAction(nameof(Create), response);
         }
     }
 }

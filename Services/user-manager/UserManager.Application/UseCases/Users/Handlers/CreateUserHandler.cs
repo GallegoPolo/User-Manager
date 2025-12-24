@@ -16,7 +16,7 @@ namespace UserManager.Application.UseCases.Users.Handlers
 
         public async Task<CreateUserResult> Handle(CreateUserCommand command)
         {
-            var user = new User(command.Name, command.Email);
+            var user = User.Create(command.Name, command.Email);   
 
             if (!user.IsValid)
                 return new CreateUserResult(null, user.Notifications);
