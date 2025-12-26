@@ -1,11 +1,12 @@
-﻿using UserManager.Application.UseCases.Users.Commands;
+﻿using MediatR;
+using UserManager.Application.UseCases.Users.Commands;
 using UserManager.Application.UseCases.Users.Results;
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
 
 namespace UserManager.Application.UseCases.Users.Handlers
 {
-    public class CreateUserHandler
+    public class CreateUserHandler : IRequestHandler<CreateUserCommand, CreateUserResult>
     {
         private readonly IUserRepository _repository;
 
@@ -14,9 +15,9 @@ namespace UserManager.Application.UseCases.Users.Handlers
             _repository = repository;
         }
 
-        public async Task<CreateUserResult> Handle(CreateUserCommand command)
+        public async Task<CreateUserResult> Handle(CreateUserCommand command, CancellationToken cancellationToken)
         {
-            var user = User.Create(command.Name, command.Email);   
+            var user = User.Create(command.Name, command.Email);
 
             if (!user.IsValid)
                 return new CreateUserResult(null, user.Notifications);

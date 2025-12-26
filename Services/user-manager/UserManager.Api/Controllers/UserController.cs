@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
 using UserManager.Api.Contracts.Requests;
 using UserManager.Api.Contracts.Responses;
 using UserManager.Application.UseCases.Users.Commands;
-using UserManager.Application.UseCases.Users.Handlers;
 
 namespace UserManager.Api.Controllers
 {
@@ -10,17 +10,17 @@ namespace UserManager.Api.Controllers
     [Route("api/users")]
     public class UserController : ControllerBase
     {
-        private readonly CreateUserHandler _handler;
+        private readonly IMediator _mediator;
 
-        public UserController(CreateUserHandler handler)
+        public UserController(IMediator mediator)
         {
-            _handler = handler;
+            _mediator = mediator;
         }
 
         [HttpPost]
         public async Task<IActionResult> Create(CreateUserRequest request)
         {
-            var result = await _handler.Handle(new CreateUserCommand(request.Name, request.Email));
+            var result = await _mediator.Send(new CreateUserCommand(request.Name, request.Email));
 
             if (result.Errors != null && result.Errors.Any())
                 return BadRequest(result.Errors);

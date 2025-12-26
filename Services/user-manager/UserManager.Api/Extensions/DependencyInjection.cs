@@ -10,7 +10,7 @@ namespace UserManager.Api.Extensions
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
-            services.AddScoped<CreateUserHandler>();
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateUserHandler).Assembly));
             return services;
         }
 
