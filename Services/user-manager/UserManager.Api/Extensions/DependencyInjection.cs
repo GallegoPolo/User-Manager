@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using FluentValidation;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using UserManager.Application.UseCases.Users.Behaviors;
 using UserManager.Application.UseCases.Users.Handlers;
 using UserManager.Domain.Interfaces;
 using UserManager.Infrastructure.Persistence;
@@ -10,7 +13,10 @@ namespace UserManager.Api.Extensions
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
+            services.AddValidatorsFromAssembly(typeof(CreateUserHandler).Assembly);
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateUserHandler).Assembly));
+            services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
             return services;
         }
 

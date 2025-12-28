@@ -21,14 +21,11 @@ namespace UserManager.Api.Controllers
         public async Task<IActionResult> Create(CreateUserRequest request)
         {
             var result = await _mediator.Send(new CreateUserCommand(request.Name, request.Email));
-
-            if (result.Errors != null && result.Errors.Any())
+            
+            if (!result.IsSuccess)
                 return BadRequest(result.Errors);
-
-            if (result.UserId == null)
-                return StatusCode(StatusCodes.Status500InternalServerError, "UserId was not generated.");
-
-            var response = new CreateUserResponse(result.UserId.Value);
+            
+            var response = new CreateUserResponse(result.Value);
             return CreatedAtAction(nameof(Create), response);
         }
     }
