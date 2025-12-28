@@ -9,10 +9,12 @@ namespace UserManager.Application.UseCases.Users.Handlers
     public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>>
     {
         private readonly IUserRepository _repository;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public CreateUserHandler(IUserRepository repository)
+        public CreateUserHandler(IUserRepository repository, IUnitOfWork unitOfWork)
         {
             _repository = repository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Result<Guid>> Handle(CreateUserCommand command, CancellationToken cancellationToken)
@@ -23,6 +25,8 @@ namespace UserManager.Application.UseCases.Users.Handlers
                 return Result<Guid>.Failure(user.Notifications.ToValidationErrors());
 
             await _repository.AddAsync(user);
+            await _unitOfWork.SaveChangesAsync(cancellationToken); 
+
             return Result<Guid>.Success(user.Id);
         }
     }

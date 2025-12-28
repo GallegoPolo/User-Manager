@@ -20,13 +20,11 @@ namespace UserManager.Infrastructure.Repositories
         public async Task AddAsync(User user)
         {
             await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(User user)
         {
             _context.Users.Update(user);
-            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(Guid id)
@@ -35,7 +33,6 @@ namespace UserManager.Infrastructure.Repositories
             if (user == null) return;
 
             _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
         }
 
         public async Task<User?> GetByIdAsync(Guid id)
