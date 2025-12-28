@@ -1,6 +1,6 @@
-﻿using UserManager.Domain.Comon;
+﻿using UserManager.Domain.Common;
 
-namespace UserManager.Application.Comon
+namespace UserManager.Application.Common
 {
     public class Result<T>
     {

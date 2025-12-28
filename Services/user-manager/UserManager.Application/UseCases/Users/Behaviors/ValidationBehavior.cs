@@ -1,7 +1,7 @@
 ﻿using FluentValidation;
 using MediatR;
-using UserManager.Application.Comon;
-using UserManager.Domain.Comon;
+using UserManager.Application.Common;
+using UserManager.Domain.Common;
 
 namespace UserManager.Application.UseCases.Users.Behaviors
 {
@@ -52,7 +52,7 @@ namespace UserManager.Application.UseCases.Users.Behaviors
             if (failureMethod == null)
                 throw new InvalidOperationException("Result.Failure method not found");
 
-            var result = failureMethod.Invoke(null, new object[] { errors });
+            var result = failureMethod.Invoke(null, [errors]);
             return (TResponse)result!;
         }
 

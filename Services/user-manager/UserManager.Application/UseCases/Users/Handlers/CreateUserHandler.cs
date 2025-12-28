@@ -1,7 +1,6 @@
 ﻿using MediatR;
-using UserManager.Application.Comon;
+using UserManager.Application.Common;
 using UserManager.Application.UseCases.Users.Commands;
-using UserManager.Application.UseCases.Users.Results;
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
 

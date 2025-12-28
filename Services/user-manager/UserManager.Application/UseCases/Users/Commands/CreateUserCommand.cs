@@ -1,5 +1,5 @@
 ﻿using MediatR;
-using UserManager.Application.Comon;
+using UserManager.Application.Common;
 
 namespace UserManager.Application.UseCases.Users.Commands
 {

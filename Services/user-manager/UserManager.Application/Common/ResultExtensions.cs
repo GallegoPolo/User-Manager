@@ -1,8 +1,8 @@
 ﻿using FluentValidation.Results;
 using Flunt.Notifications;
-using UserManager.Domain.Comon;
+using UserManager.Domain.Common;
 
-namespace UserManager.Application.Comon
+namespace UserManager.Application.Common
 {
     public static class ResultExtensions
     {
