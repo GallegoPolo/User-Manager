@@ -1,4 +1,4 @@
-﻿namespace UserManager.Application.UseCases.Users.Requests
+﻿namespace UserManager.Api.Contracts.Requests
 {
     public record CreateUserRequest(string Name, string Email);
 }

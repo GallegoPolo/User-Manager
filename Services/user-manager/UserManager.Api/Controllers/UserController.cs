@@ -1,9 +1,9 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using UserManager.Api.Contracts.Requests;
+using UserManager.Api.Contracts.Responses;
 using UserManager.Application.UseCases.Users.Commands;
 using UserManager.Application.UseCases.Users.Queries;
-using UserManager.Application.UseCases.Users.Requests;
-using UserManager.Application.UseCases.Users.Responses;
 
 namespace UserManager.Api.Controllers
 {
