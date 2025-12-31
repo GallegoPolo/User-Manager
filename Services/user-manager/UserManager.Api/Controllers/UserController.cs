@@ -22,10 +22,10 @@ namespace UserManager.Api.Controllers
         public async Task<IActionResult> Create(CreateUserRequest request)
         {
             var result = await _mediator.Send(new CreateUserCommand(request.Name, request.Email));
-            
+
             if (!result.IsSuccess)
                 return BadRequest(result.Errors);
-            
+
             var response = new CreateUserResponse(result.Value);
             return CreatedAtAction(nameof(Create), response);
         }
@@ -42,5 +42,19 @@ namespace UserManager.Api.Controllers
 
             return Ok(response);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _mediator.Send(new GetAllUsersQuery());
+
+            if (!result.IsSuccess)
+                return BadRequest(result.Errors);
+
+            var response = result.Value!.Select(dto => new GetAllUsersResponse(dto.Id, dto.Name, dto.Email, dto.CreatedAt));
+
+            return Ok(response);
+        }
+
     }
 }
