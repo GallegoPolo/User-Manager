@@ -56,5 +56,17 @@ namespace UserManager.Api.Controllers
             return Ok(response);
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(Guid id, UpdateUserRequest request)
+        {
+            var command = new UpdateUserCommand(id, request.Name, request.Email);
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+                return BadRequest(result.Errors);
+
+            var response = new UpdateUserResponse(result.Value);
+            return Ok(response);
+        }
     }
 }

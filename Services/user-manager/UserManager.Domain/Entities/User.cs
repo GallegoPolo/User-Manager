@@ -23,12 +23,21 @@ public class User : Notifiable<Notification>
             CreatedAt = DateTime.UtcNow
         };
 
-        user.AddNotifications(new Contract<Notification>()
-            .Requires()
-            .IsNotNullOrWhiteSpace(user.Name, nameof(Name), "Name is required")
-            .IsEmail(user.Email, nameof(Email), "Invalid email")
-        );
+        user.AddNotifications(new Contract<Notification>().Requires()
+                                                          .IsNotNullOrWhiteSpace(user.Name, nameof(Name), "Name is required")
+                                                          .IsEmail(user.Email, nameof(Email), "Invalid email"));
 
         return user;
     }
+
+    public void Update(string name, string email)
+    {
+        Name = name;
+        Email = email;
+
+        AddNotifications(new Contract<Notification>().Requires()
+                                                     .IsNotNullOrWhiteSpace(Name, nameof(Name), "Name is required")
+                                                     .IsEmail(Email, nameof(Email), "Invalid email"));
+    }
+
 }
