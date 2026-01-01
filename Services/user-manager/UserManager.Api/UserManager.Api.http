@@ -1,6 +1,30 @@
 @UserManager.Api_HostAddress = http://localhost:5255
 
-GET {{UserManager.Api_HostAddress}}/weatherforecast/
+### Criar Usuário
+POST {{UserManager.Api_HostAddress}}/api/users
+Content-Type: application/json
+
+{
+  "name": "João Gallego",
+  "email": "joao@example.com"
+}
+
+### Buscar Usuário por ID
+GET {{UserManager.Api_HostAddress}}/api/users/{id}
 Accept: application/json
 
-###
+### Listar Todos os Usuários
+GET {{UserManager.Api_HostAddress}}/api/users
+Accept: application/json
+
+### Atualizar Usuário
+PUT {{UserManager.Api_HostAddress}}/api/users/{id}
+Content-Type: application/json
+
+{
+  "name": "João Gallego Atualizado",
+  "email": "joao.updated@example.com"
+}
+
+### Deletar Usuário
+DELETE {{UserManager.Api_HostAddress}}/api/users/{id}

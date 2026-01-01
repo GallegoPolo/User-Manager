@@ -19,7 +19,7 @@ namespace UserManager.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(CreateUserRequest request)
+        public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
         {
             var result = await _mediator.Send(new CreateUserCommand(request.Name, request.Email));
 
@@ -57,7 +57,7 @@ namespace UserManager.Api.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, UpdateUserRequest request)
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
         {
             var command = new UpdateUserCommand(id, request.Name, request.Email);
             var result = await _mediator.Send(command);

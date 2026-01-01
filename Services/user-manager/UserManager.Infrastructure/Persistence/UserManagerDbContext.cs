@@ -18,6 +18,7 @@ namespace UserManager.Infrastructure.Persistence
                 entity.Property(u => u.Name).IsRequired().HasMaxLength(200);
                 entity.Property(u => u.Email).IsRequired().HasMaxLength(200);
                 entity.HasIndex(u => u.Email).IsUnique();
+                entity.Ignore(u => u.Notifications);
             });
         }
 

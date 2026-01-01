@@ -31,7 +31,7 @@ namespace UserManager.Api.Extensions
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-            services.AddDbContext<UserManagerDbContext>(options => options.UseSqlServer(connectionString));
+            services.AddDbContext<UserManagerDbContext>(options => options.UseNpgsql(connectionString));
             services.AddScoped<IUserRepository, UserRepository>();
 
             return services;
