@@ -68,5 +68,17 @@ namespace UserManager.Api.Controllers
             var response = new UpdateUserResponse(result.Value);
             return Ok(response);
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var command = new DeleteUserCommand(id);
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+                return NotFound(result.Errors);
+
+            return NoContent();
+        }
     }
 }
