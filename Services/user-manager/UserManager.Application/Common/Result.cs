@@ -23,5 +23,8 @@ namespace UserManager.Application.Common
 
         public static Result<T> Failure(ValidationError error)
             => new(false, default, [error]);
+
+        public static Result<T> Failure(string propertyName, string errorMessage)
+            => new(false, default, [new ValidationError(propertyName, errorMessage)]);
     }
 }

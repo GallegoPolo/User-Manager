@@ -44,5 +44,10 @@ namespace UserManager.Infrastructure.Repositories
         {
             return await _context.Users.ToListAsync();
         }
+
+        public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
+        {
+            return await _context.Users.AnyAsync(u => u.Email == email, cancellationToken);
+        }
     }
 }

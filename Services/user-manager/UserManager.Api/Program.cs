@@ -7,6 +7,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services
        .AddApplication()
+       .AddDomainServices()
        .AddInfrastructure()
        .AddPersistence(builder.Configuration);
 
