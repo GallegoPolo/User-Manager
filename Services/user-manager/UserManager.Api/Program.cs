@@ -1,4 +1,5 @@
 using UserManager.Api.Extensions;
+using UserManager.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,8 @@ builder.Services
        .AddPersistence(builder.Configuration);
 
 var app = builder.Build();
+
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
