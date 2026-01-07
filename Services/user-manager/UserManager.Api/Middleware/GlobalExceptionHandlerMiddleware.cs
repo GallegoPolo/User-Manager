@@ -60,9 +60,7 @@ namespace UserManager.Api.Middleware
 
         private static ErrorResponse MapValidationException(ValidationException ex)
         {
-            var errors = ex.Errors
-                .Select(f => new ValidationError(f.PropertyName, f.ErrorMessage))
-                .ToList();
+            var errors = ex.Errors.Select(f => new ValidationError(f.PropertyName, f.ErrorMessage)).ToList();
 
             return new ErrorResponse(
                 title: "Validation Error",
@@ -95,17 +93,15 @@ namespace UserManager.Api.Middleware
         {
             var errors = new List<ValidationError>();
             var status = HttpStatusCode.InternalServerError;
-            var title = "Database Error";
+            string title;
 
-            if (ex.InnerException?.Message.Contains("duplicate key") == true ||
-                ex.InnerException?.Message.Contains("UNIQUE constraint") == true)
+            if (IsUniqueConstraintViolation(ex))  
             {
                 status = HttpStatusCode.Conflict;
                 title = "Conflict";
                 errors.Add(new ValidationError("Database", "A record with this value already exists."));
             }
-            else if (ex.InnerException?.Message.Contains("foreign key") == true ||
-                     ex.InnerException?.Message.Contains("FOREIGN KEY constraint") == true)
+            else if (IsForeignKeyConstraintViolation(ex)) 
             {
                 status = HttpStatusCode.BadRequest;
                 title = "Invalid Reference";
@@ -113,7 +109,8 @@ namespace UserManager.Api.Middleware
             }
             else
             {
-                errors.Add(new ValidationError("Database", "An error occurred while processing your request."));
+                title = "Internal Server Error";
+                errors.Add(new ValidationError("General", "An unexpected error occurred."));
             }
 
             return new ErrorResponse(
@@ -124,6 +121,18 @@ namespace UserManager.Api.Middleware
                 timestamp: DateTime.UtcNow,
                 detail: environment.IsDevelopment() ? ex.ToString() : null
             );
+        }
+
+        private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+        {
+            var message = ex.InnerException?.Message ?? string.Empty;
+            return message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) || message.Contains("UNIQUE constraint", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsForeignKeyConstraintViolation(DbUpdateException ex)
+        {
+            var message = ex.InnerException?.Message ?? string.Empty;
+            return message.Contains("foreign key", StringComparison.OrdinalIgnoreCase) ||  message.Contains("FOREIGN KEY constraint", StringComparison.OrdinalIgnoreCase);
         }
 
         private static ErrorResponse MapGenericException(Exception ex, IHostEnvironment env)
