@@ -1,7 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
 using UserManager.Infrastructure.Persistence;
