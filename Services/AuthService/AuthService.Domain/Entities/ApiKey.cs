@@ -5,7 +5,7 @@ using Flunt.Validations;
 
 namespace AuthService.Domain.Entities
 {
-    internal class ApiKey : Notifiable<Notification>
+    public class ApiKey : Notifiable<Notification>
     {
         // Construtor privado para EF Core
         private ApiKey() { }
@@ -18,11 +18,7 @@ namespace AuthService.Domain.Entities
         public DateTime? ExpiresAt { get; private set; }
         public DateTime CreatedAt { get; private set; }
 
-        public static ApiKey Create(
-            string name,
-            ApiKeyHash keyHash,
-            List<Scope> scopes,
-            DateTime? expiresAt = null)
+        public static ApiKey Create(string name, ApiKeyHash keyHash, List<Scope> scopes, DateTime? expiresAt = null)
         {
             var apiKey = new ApiKey
             {
