@@ -7,18 +7,19 @@ namespace AuthService.Domain.Services
 {
     public class ApiKeyDomainService : IApiKeyDomainService
     {
-        private const int API_KEY_LENGTH = 64; // Tamanho da API Key em caracteres
+        // Constantes para evitar números mágicos
+        private const int API_KEY_BYTES_LENGTH = 32; 
+        private const string API_KEY_PREFIX = "ak_";
+        private const int MIN_API_KEY_LENGTH = 10; 
 
         public string GenerateApiKey()
         {
-            // Gera uma API Key segura usando RandomNumberGenerator
-            var bytes = new byte[API_KEY_LENGTH / 2]; // 32 bytes = 64 caracteres hex
-            using var rng = RandomNumberGenerator.Create();
-            rng.GetBytes(bytes);
+            var randomBytes = new byte[API_KEY_BYTES_LENGTH];
+            using var randomNumberGenerator = RandomNumberGenerator.Create();
+            randomNumberGenerator.GetBytes(randomBytes);
 
-            // Converte para hexadecimal e adiciona prefixo
-            var key = Convert.ToHexString(bytes);
-            return $"ak_{key}"; // Prefixo "ak_" para identificar como API Key
+            var hexKey = Convert.ToHexString(randomBytes);
+            return $"{API_KEY_PREFIX}{hexKey}";
         }
 
         public ApiKeyHash HashApiKey(string apiKey)
@@ -26,7 +27,6 @@ namespace AuthService.Domain.Services
             if (string.IsNullOrWhiteSpace(apiKey))
                 throw new ArgumentException("API Key cannot be null or empty", nameof(apiKey));
 
-            // Usa SHA-256 para hash (seguro e rápido)
             using var sha256 = SHA256.Create();
             var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(apiKey));
             var hashString = Convert.ToHexString(hashBytes);
@@ -39,11 +39,10 @@ namespace AuthService.Domain.Services
             if (string.IsNullOrWhiteSpace(apiKey))
                 return false;
 
-            // Valida formato: deve começar com "ak_" e ter tamanho mínimo
-            if (!apiKey.StartsWith("ak_"))
+            if (!apiKey.StartsWith(API_KEY_PREFIX, StringComparison.Ordinal))
                 return false;
 
-            if (apiKey.Length < 10) // Mínimo razoável
+            if (apiKey.Length < MIN_API_KEY_LENGTH)
                 return false;
 
             return true;
