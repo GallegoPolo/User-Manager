@@ -36,6 +36,9 @@ namespace AuthService.Infrastructure.Persistence
                            .HasColumnName("KeyHash")
                            .IsRequired()
                            .HasMaxLength(500);
+
+                    keyHash.HasIndex(h => h.Value)
+                           .HasDatabaseName("IX_ApiKeys_KeyHash");
                 });
 
                 entity.OwnsMany(a => a.Scopes, scope =>
@@ -46,9 +49,6 @@ namespace AuthService.Infrastructure.Persistence
                         .HasMaxLength(100);
                     scope.ToTable("ApiKeyScopes");
                 });
-
-                entity.HasIndex(a => a.KeyHash.Value)
-                      .HasDatabaseName("IX_ApiKeys_KeyHash");
 
                 entity.Ignore(a => a.Notifications);
             });
