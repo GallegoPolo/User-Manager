@@ -72,9 +72,7 @@ namespace AuthService.Domain.Entities
             );
 
             if (Scopes != null && Scopes.Count == 0)
-            {
                 AddNotification("Scopes", "At least one scope is required");
-            }
         }
     }
 }

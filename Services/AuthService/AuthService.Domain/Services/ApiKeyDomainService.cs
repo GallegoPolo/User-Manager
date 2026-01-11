@@ -1,4 +1,4 @@
-﻿using AuthService.Domain.Interfaces.Services;
+using AuthService.Domain.Interfaces.Services;
 using AuthService.Domain.ValueObjects;
 using System.Security.Cryptography;
 using System.Text;
