@@ -6,6 +6,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddPersistence(builder.Configuration);
+builder.Services
+    .AddInfrastructure()
+    .AddDomainServices()
+    .AddSecurity();
 
 var app = builder.Build();
 
