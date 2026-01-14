@@ -1,10 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using AuthService.Application.Common;
+using AuthService.Application.UseCases.ApiKeys.DTOs;
+using MediatR;
 
 namespace AuthService.Application.UseCases.ApiKeys.Commands
 {
-    internal class CreateApiKeyCommand
+    public class CreateApiKeyCommand : IRequest<Result<ApiKeyDTO>>
     {
+        public string Name { get; set; } = string.Empty;
+        public List<string> Scopes { get; set; } = new();
+        public DateTime? ExpiresAt { get; set; }
     }
 }

@@ -47,7 +47,7 @@ namespace AuthService.Domain.Entities
             Status = EApiKeyStatus.Revoked;
         }
 
-        public bool IsExpired()
+        private bool IsExpired()
         {
             if (ExpiresAt == null)
                 return false;
@@ -55,7 +55,7 @@ namespace AuthService.Domain.Entities
             return DateTime.UtcNow > ExpiresAt.Value;
         }
 
-        public new bool IsValid()
+        public bool IsActive()
         {
             return Status == EApiKeyStatus.Active && !IsExpired();
         }

@@ -31,7 +31,7 @@ namespace AuthService.Infrastructure.Repositories
         public async Task<IEnumerable<ApiKey>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.ApiKeys
-                .Include(a => a.Scopes) 
+                .Include(a => a.Scopes)
                 .ToListAsync(cancellationToken);
         }
 

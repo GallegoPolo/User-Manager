@@ -9,7 +9,8 @@ builder.Services.AddPersistence(builder.Configuration);
 builder.Services
     .AddInfrastructure()
     .AddDomainServices()
-    .AddSecurity();
+    .AddSecurity()
+    .AddApplication();
 
 var app = builder.Build();
 
