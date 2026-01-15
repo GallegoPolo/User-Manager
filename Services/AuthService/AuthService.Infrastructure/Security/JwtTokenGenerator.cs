@@ -7,6 +7,7 @@ using System.Text;
 
 namespace AuthService.Infrastructure.Security
 {
+    //TODO: Melhorar classe
     public class JwtTokenGenerator : ITokenGenerator
     {
         private readonly IConfiguration _configuration;
