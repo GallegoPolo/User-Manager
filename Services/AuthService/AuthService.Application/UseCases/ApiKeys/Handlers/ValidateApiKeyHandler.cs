@@ -42,13 +42,14 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
                 return Result<ValidateApiKeyDTO>.Failure("ApiKey", "API Key is not active or has expired");
 
             var token = await _tokenGenerator.GenerateTokenAsync(subject: apiKey.Id.ToString(),
+                                                                 // TODO: Quando ApiKey tiver Role (ou Identity/Credential), usar apiKey.Role ao invés de hardcoded
                                                                  roles: new[] { "Service" },
                                                                  scopes: apiKey.Scopes.Select(s => s.Value),
                                                                  cancellationToken: cancellationToken);
 
-            var dto = new ValidateApiKeyDTO{Token = token, ExpiresAt = DateTime.UtcNow.AddHours(1)};
+            var tokenDTO = new ValidateApiKeyDTO{Token = token.Token, ExpiresAt = token.ExpiresAt};
 
-            return Result<ValidateApiKeyDTO>.Success(dto);
+            return Result<ValidateApiKeyDTO>.Success(tokenDTO);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using AuthService.Domain.Interfaces.Repositories;
+using AuthService.Domain.Results;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -23,7 +24,7 @@ namespace AuthService.Infrastructure.Security
             _expirationMinutes = int.Parse(_configuration["Jwt:ExpirationMinutes"] ?? "60");
         }
 
-        public Task<string> GenerateTokenAsync(string subject,
+        public Task<TokenResult> GenerateTokenAsync(string subject,
                                                IEnumerable<string> roles,
                                                IEnumerable<string> scopes,
                                                Dictionary<string, string>? additionalClaims = null,
@@ -70,7 +71,9 @@ namespace AuthService.Infrastructure.Security
             );
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            return Task.FromResult(tokenHandler.WriteToken(token));
+            var tokenResult = new TokenResult{Token = tokenHandler.WriteToken(token), ExpiresAt = token.ValidTo};
+
+            return Task.FromResult(tokenResult);
         }
     }
 }
