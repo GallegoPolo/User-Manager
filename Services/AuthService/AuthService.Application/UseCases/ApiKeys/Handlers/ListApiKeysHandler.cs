@@ -24,7 +24,7 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
                 Id = apiKey.Id,
                 Name = apiKey.Name,
                 Scopes = apiKey.Scopes.Select(s => s.Value).ToList(),
-                Status = apiKey.Status.ToString(),
+                Status = apiKey.Status,
                 ExpiresAt = apiKey.ExpiresAt,
                 CreatedAt = apiKey.CreatedAt
             });
