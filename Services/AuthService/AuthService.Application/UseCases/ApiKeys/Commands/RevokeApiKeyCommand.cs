@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using AuthService.Application.Common;
+using MediatR;
 
 namespace AuthService.Application.UseCases.ApiKeys.Commands
 {
-    internal class RevokeApiKeyCommand
-    {
-    }
+    public record RevokeApiKeyCommand(Guid Id) : IRequest<Result<Guid>>;
 }
