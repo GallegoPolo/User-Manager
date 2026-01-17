@@ -1,6 +1,4 @@
 ﻿namespace AuthService.Api.Contracts.Requests
 {
-    public class CreateApiKeyRequest
-    {
-    }
+    public record CreateApiKeyRequest(string Name, List<string> Scopes, DateTime? ExpiresAt);
 }
