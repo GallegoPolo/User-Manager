@@ -1,5 +1,6 @@
 using AuthService.Api.Converters;
 using AuthService.Api.Extensions;
+using AuthService.Api.Middlewares;
 using AuthService.Domain.Enums;
 using Microsoft.AspNetCore.Http.Json;
 
@@ -24,15 +25,15 @@ builder.Services.Configure<JsonOptions>(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();

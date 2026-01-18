@@ -46,7 +46,7 @@ namespace AuthService.Api.Extensions
 
         public static IServiceCollection AddSecurity(this IServiceCollection services)
         {
-            services.AddScoped<ApiKeyHasher>();
+            services.AddScoped<IApiKeyHasher, ApiKeyHasher>();
             services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
             return services;
         }
