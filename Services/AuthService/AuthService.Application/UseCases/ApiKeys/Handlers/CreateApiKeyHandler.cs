@@ -41,14 +41,13 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             var dto = new ApiKeyDTO
-            {
-                Id = apiKey.Id,
-                Name = apiKey.Name,
-                Scopes = apiKey.Scopes.Select(s => s.Value).ToList(),
-                Status = apiKey.Status.ToString(),
-                ExpiresAt = apiKey.ExpiresAt,
-                CreatedAt = apiKey.CreatedAt
-            };
+            (id: apiKey.Id,
+             name: apiKey.Name,
+             scopes: apiKey.Scopes.Select(s => s.Value).ToList(),
+             status: apiKey.Status,
+             expiresAt: apiKey.ExpiresAt,
+             createdAt: apiKey.CreatedAt,
+             apiKey: plainApiKey);
 
             return Result<ApiKeyDTO>.Success(dto);
         }
