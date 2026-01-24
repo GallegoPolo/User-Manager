@@ -2,18 +2,21 @@ using AuthService.Api.Converters;
 using AuthService.Api.Extensions;
 using AuthService.Api.Middlewares;
 using AuthService.Domain.Enums;
+using AuthService.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Http.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddPersistence(builder.Configuration);
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+builder.Services.AddInfrastructure(connectionString);
+
 builder.Services
-    .AddInfrastructure()
     .AddDomainServices()
-    .AddSecurity()
     .AddApplication()
     .AddBootstrap();
 
@@ -37,4 +40,5 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
 app.Run();

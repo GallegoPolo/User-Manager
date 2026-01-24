@@ -4,7 +4,7 @@ using System.Text;
 
 namespace AuthService.Application.UseCases.ApiKeys.Handlers
 {
-    internal class GenerateTokenHandler
+    public class AuthenticateApiKeyHandler
     {
     }
 }

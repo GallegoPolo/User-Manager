@@ -25,12 +25,9 @@ namespace AuthService.Api.Controllers
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<CreateApiKeyResponse>> CreateApiKey([FromBody] CreateApiKeyRequest request)
         {
-            var command = new CreateApiKeyCommand
-            {
-                Name = request.Name,
-                Scopes = request.Scopes,
-                ExpiresAt = request.ExpiresAt
-            };
+            var command = new CreateApiKeyCommand(request.Name,
+                                                  request.Scopes,
+                                                  request.ExpiresAt);
 
             var result = await _mediator.Send(command);
 

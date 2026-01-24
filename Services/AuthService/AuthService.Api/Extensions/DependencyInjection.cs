@@ -20,7 +20,6 @@ namespace AuthService.Api.Extensions
             services.AddValidatorsFromAssembly(typeof(CreateApiKeyHandler).Assembly);
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateApiKeyHandler).Assembly));
             services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-
             return services;
         }
 
@@ -30,31 +29,9 @@ namespace AuthService.Api.Extensions
             return services;
         }
 
-        public static IServiceCollection AddPersistence(this IServiceCollection services, ConfigurationManager configuration)
-        {
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
-            services.AddDbContext<AuthDbContext>(options => options.UseNpgsql(connectionString));
-
-            return services;
-        }
-
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services)
-        {
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped<IApiKeyRepository, ApiKeyRepository>();
-            return services;
-        }
-
         public static IServiceCollection AddDomainServices(this IServiceCollection services)
         {
             services.AddScoped<IApiKeyDomainService, ApiKeyDomainService>();
-            return services;
-        }
-
-        public static IServiceCollection AddSecurity(this IServiceCollection services)
-        {
-            services.AddScoped<IApiKeyHasher, ApiKeyHasher>();
-            services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
             return services;
         }
     }

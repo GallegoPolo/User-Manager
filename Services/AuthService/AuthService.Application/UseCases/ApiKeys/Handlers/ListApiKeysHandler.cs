@@ -19,15 +19,12 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
         {
             var apiKeys = await _repository.GetAllAsync(cancellationToken);
 
-            var apiKeysDTO = apiKeys.Select(apiKey => new ApiKeyDTO
-            {
-                Id = apiKey.Id,
-                Name = apiKey.Name,
-                Scopes = apiKey.Scopes.Select(s => s.Value).ToList(),
-                Status = apiKey.Status,
-                ExpiresAt = apiKey.ExpiresAt,
-                CreatedAt = apiKey.CreatedAt
-            });
+            var apiKeysDTO = apiKeys.Select(apiKey => new ApiKeyDTO(apiKey.Id,
+                                                                    apiKey.Name,
+                                                                    apiKey.Scopes.Select(s => s.Value).ToList(),
+                                                                    apiKey.Status,
+                                                                    apiKey.ExpiresAt,
+                                                                    apiKey.CreatedAt));
 
             return Result<IEnumerable<ApiKeyDTO>>.Success(apiKeysDTO);
         }

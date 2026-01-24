@@ -5,8 +5,6 @@ using AuthService.Domain.Entities;
 using AuthService.Domain.Interfaces.Repositories;
 using AuthService.Domain.Interfaces.Services;
 using MediatR;
-using System;
-using System.Collections.Generic;
 
 namespace AuthService.Application.UseCases.ApiKeys.Handlers
 {
