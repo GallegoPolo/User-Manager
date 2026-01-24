@@ -11,7 +11,7 @@ namespace AuthService.Domain.Entities
         public Guid Id { get; private set; }
         public string Email { get; private set; } = string.Empty;
         public PasswordHash PasswordHash { get; private set; } = null!;
-        public string Role { get; private set; } = "ADMIN"; // Sempre ADMIN
+        public string Role { get; private set; } = "ADMIN"; 
         public bool IsActive { get; private set; }
         public DateTime CreatedAt { get; private set; }
         public DateTime? LastLoginAt { get; private set; }
