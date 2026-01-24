@@ -1,16 +1,22 @@
+using AuthService.Domain.Interfaces.Repositories;
 using AuthService.Domain.Interfaces.Services;
 using AuthService.Domain.ValueObjects;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace AuthService.Domain.Services
 {
     public class ApiKeyDomainService : IApiKeyDomainService
     {
-        // Constantes para evitar números mágicos
-        private const int API_KEY_BYTES_LENGTH = 32; 
+        private const int API_KEY_BYTES_LENGTH = 32;
         private const string API_KEY_PREFIX = "ak_";
-        private const int MIN_API_KEY_LENGTH = 10; 
+        private const int MIN_API_KEY_LENGTH = 10;
+
+        private readonly IApiKeyHasher _hasher;
+
+        public ApiKeyDomainService(IApiKeyHasher hasher)
+        {
+            _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
+        }
 
         public string GenerateApiKey()
         {
@@ -24,14 +30,12 @@ namespace AuthService.Domain.Services
 
         public ApiKeyHash HashApiKey(string apiKey)
         {
-            if (string.IsNullOrWhiteSpace(apiKey))
-                throw new ArgumentException("API Key cannot be null or empty", nameof(apiKey));
+            return _hasher.Hash(apiKey);
+        }
 
-            using var sha256 = SHA256.Create();
-            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(apiKey));
-            var hashString = Convert.ToHexString(hashBytes);
-
-            return new ApiKeyHash(hashString);
+        public bool VerifyApiKey(string apiKey, ApiKeyHash storedHash)
+        {
+            return _hasher.Verify(apiKey, storedHash);
         }
 
         public bool ValidateApiKeyFormat(string apiKey)

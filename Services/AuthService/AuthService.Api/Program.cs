@@ -14,7 +14,8 @@ builder.Services
     .AddInfrastructure()
     .AddDomainServices()
     .AddSecurity()
-    .AddApplication();
+    .AddApplication()
+    .AddBootstrap();
 
 builder.Services.Configure<JsonOptions>(options =>
 {

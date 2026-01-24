@@ -5,12 +5,16 @@ namespace AuthService.Domain.ValueObjects
 {
     public class ApiKeyHash : ValueObjectBase
     {
-        private const int MIN_HASH_LENGTH = 32;
+        private const int MIN_HASH_LENGTH = 50;
+        private const int MAX_HASH_LENGTH = 200;
 
         public string Value { get; private set; }
 
         // Para EF Core
-        private ApiKeyHash() { }
+        private ApiKeyHash()
+        {
+            Value = string.Empty;
+        }
 
         public ApiKeyHash(string hash)
         {
@@ -23,12 +27,11 @@ namespace AuthService.Domain.ValueObjects
             var contract = new Contract<Notification>()
                 .Requires()
                 .IsNotNullOrWhiteSpace(Value, nameof(Value), "Hash cannot be null or empty")
-                .IsGreaterOrEqualsThan(Value.Length, MIN_HASH_LENGTH, nameof(Value), $"Hash must have at least {MIN_HASH_LENGTH} characters to be considered valid");
+                .IsGreaterOrEqualsThan(Value.Length, MIN_HASH_LENGTH, nameof(Value), $"Hash is too short. Expected at least {MIN_HASH_LENGTH} characters (Argon2 format)")
+                .IsLowerOrEqualsThan(Value.Length, MAX_HASH_LENGTH, nameof(Value), $"Hash is too long. Maximum {MAX_HASH_LENGTH} characters allowed");
 
             if (!contract.IsValid)
-            {
                 throw new ArgumentException(contract.Notifications.First().Message, nameof(Value));
-            }
         }
 
         protected override object GetEqualityComponents()

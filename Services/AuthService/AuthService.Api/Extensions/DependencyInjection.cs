@@ -1,4 +1,5 @@
-﻿using AuthService.Application.UseCases.ApiKeys.Behaviors;
+﻿using AuthService.Api.Services;
+using AuthService.Application.UseCases.ApiKeys.Behaviors;
 using AuthService.Application.UseCases.ApiKeys.Handlers;
 using AuthService.Domain.Interfaces.Repositories;
 using AuthService.Domain.Interfaces.Services;
@@ -20,6 +21,12 @@ namespace AuthService.Api.Extensions
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateApiKeyHandler).Assembly));
             services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
+            return services;
+        }
+
+        public static IServiceCollection AddBootstrap(this IServiceCollection services)
+        {
+            services.AddHostedService<ApiKeyBootstrapService>();
             return services;
         }
 

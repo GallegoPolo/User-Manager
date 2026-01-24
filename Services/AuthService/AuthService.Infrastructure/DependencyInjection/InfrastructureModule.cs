@@ -1,10 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using AuthService.Domain.Interfaces.Repositories;
+using AuthService.Infrastructure.Security;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AuthService.Infrastructure.DependencyInjection
 {
-    internal class InfrastructureModule
+    public static class InfrastructureModule
     {
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
+        {
+            services.AddScoped<IApiKeyHasher, ApiKeyHasher>();
+
+            return services;
+        }
     }
 }
