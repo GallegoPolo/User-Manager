@@ -15,6 +15,7 @@ namespace AuthService.Infrastructure.DependencyInjection
 
             services.AddScoped<IApiKeyHasher, ApiKeyHasher>();
             services.AddScoped<IPasswordHasher, PasswordHasher>();
+            services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
 
             services.AddScoped<IApiKeyRepository, ApiKeyRepository>();
             services.AddScoped<IUserCredentialRepository, UserCredentialRepository>();
