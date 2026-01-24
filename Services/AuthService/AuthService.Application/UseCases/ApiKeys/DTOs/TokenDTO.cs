@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace AuthService.Application.UseCases.ApiKeys.DTOs
+﻿namespace AuthService.Application.UseCases.ApiKeys.DTOs
 {
-    internal class TokenDTO
-    {
-    }
+    public record TokenDTO(string AccessToken, string TokenType, int ExpiresIn);
 }
