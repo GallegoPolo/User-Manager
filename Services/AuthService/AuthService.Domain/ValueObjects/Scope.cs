@@ -35,6 +35,5 @@ namespace AuthService.Domain.ValueObjects
         }
 
         public override string ToString() => Value;
-
     }
 }

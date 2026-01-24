@@ -5,7 +5,7 @@ using MediatR;
 
 namespace AuthService.Application.UseCases.ApiKeys.Handlers
 {
-    public class RevokeApiKeyHandler : IRequestHandler<RevokeApiKeyCommand, Result<Guid>>
+    public class RevokeApiKeyHandler : IRequestHandler<RevokeApiKeyCommand, Result<bool>>
     {
         private readonly IApiKeyRepository _repository;
         private readonly IUnitOfWork _unitOfWork;
@@ -16,22 +16,22 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<Result<Guid>> Handle(RevokeApiKeyCommand command, CancellationToken cancellationToken)
+        public async Task<Result<bool>> Handle(RevokeApiKeyCommand command, CancellationToken cancellationToken)
         {
             var apiKey = await _repository.GetByIdAsync(command.Id, cancellationToken);
 
             if (apiKey == null)
-                return Result<Guid>.Failure("Id", "ApiKey not found");
+                return Result<bool>.Failure("Id", "ApiKey not found");
 
             apiKey.Revoke();
 
             if (!apiKey.IsValid)
-                return Result<Guid>.Failure(apiKey.Notifications.ToValidationErrors());
+                return Result<bool>.Failure(apiKey.Notifications.ToValidationErrors());
 
             await _repository.UpdateAsync(apiKey, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            return Result<Guid>.Success(apiKey.Id);
+            return Result<bool>.Success(true);
         }
     }
 }
