@@ -4,10 +4,5 @@ using MediatR;
 
 namespace AuthService.Application.UseCases.ApiKeys.Commands
 {
-    public class CreateApiKeyCommand : IRequest<Result<ApiKeyDTO>>
-    {
-        public string Name { get; set; } = string.Empty;
-        public List<string> Scopes { get; set; } = new();
-        public DateTime? ExpiresAt { get; set; }
-    }
+    public record CreateApiKeyCommand(string Name, IReadOnlyList<string> Scopes, DateTime? ExpiresAt = null) : IRequest<Result<ApiKeyDTO>>;
 }

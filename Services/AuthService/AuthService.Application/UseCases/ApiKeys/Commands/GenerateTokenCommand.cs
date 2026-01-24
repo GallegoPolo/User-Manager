@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using AuthService.Application.Common;
+using AuthService.Application.UseCases.ApiKeys.DTOs;
+using MediatR;
 
 namespace AuthService.Application.UseCases.ApiKeys.Commands
 {
-    internal class GenerateTokenCommand
-    {
-    }
+    public record GenerateTokenCommand(string ApiKey) : IRequest<Result<TokenDTO>>;
 }
