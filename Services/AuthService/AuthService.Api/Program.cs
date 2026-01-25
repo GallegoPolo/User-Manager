@@ -20,6 +20,8 @@ builder.Services
     .AddApplication()
     .AddBootstrap();
 
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
 builder.Services.Configure<JsonOptions>(options =>
 {
     options.SerializerOptions.Converters.Add(
@@ -41,6 +43,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

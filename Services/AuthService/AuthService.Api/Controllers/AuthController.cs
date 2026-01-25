@@ -5,6 +5,7 @@ using AuthService.Application.UseCases.ApiKeys.DTOs;
 using AuthService.Application.UseCases.ApiKeys.Queries;
 using AuthService.Domain.Common;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Api.Controllers
@@ -21,6 +22,7 @@ namespace AuthService.Api.Controllers
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -39,6 +41,7 @@ namespace AuthService.Api.Controllers
         }
 
         [HttpPost("token")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -57,6 +60,7 @@ namespace AuthService.Api.Controllers
         }
 
         [HttpPost("admins")]
+        [Authorize(Policy = "AdminOnly")]
         [ProducesResponseType(typeof(CreateAdminResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<CreateAdminResponse>> CreateAdmin([FromBody] CreateAdminRequest request, CancellationToken ct)
@@ -73,6 +77,7 @@ namespace AuthService.Api.Controllers
         }
 
         [HttpPost("api-keys")]
+        [Authorize(Policy = "AdminOnly")]
         [ProducesResponseType(typeof(CreateApiKeyResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<CreateApiKeyResponse>> CreateApiKey([FromBody] CreateApiKeyRequest request, CancellationToken ct)
@@ -100,6 +105,7 @@ namespace AuthService.Api.Controllers
         }
 
         [HttpPost("api-keys/validate")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(ValidateApiKeyResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -118,6 +124,7 @@ namespace AuthService.Api.Controllers
         }
 
         [HttpGet("api-keys")]
+        [Authorize(Policy = "AdminOnly")]
         [ProducesResponseType(typeof(IEnumerable<ApiKeyDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<ApiKeyDTO>>> ListApiKeys()
@@ -132,6 +139,7 @@ namespace AuthService.Api.Controllers
         }
 
         [HttpDelete("api-keys/{id}")]
+        [Authorize(Policy = "AdminOnly")]
         [ProducesResponseType(typeof(RevokeApiKeyResponse), StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status404NotFound)]
         public async Task<ActionResult<RevokeApiKeyResponse>> RevokeApiKey(Guid id, CancellationToken ct)
@@ -146,6 +154,7 @@ namespace AuthService.Api.Controllers
         }
 
         [HttpGet("api-keys/{id}")]
+        [Authorize(Policy = "AdminOnly")]
         [ProducesResponseType(typeof(GetApiKeyByIdResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status404NotFound)]
         public async Task<ActionResult<GetApiKeyByIdResponse>> GetApiKeyById(Guid id, CancellationToken ct)
