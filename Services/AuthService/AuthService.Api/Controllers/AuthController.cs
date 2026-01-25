@@ -24,10 +24,10 @@ namespace AuthService.Api.Controllers
         [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<TokenResponse>> LoginAdmin([FromBody] LoginAdminRequest request)
+        public async Task<ActionResult<TokenResponse>> LoginAdmin([FromBody] LoginAdminRequest request, CancellationToken ct)
         {
             var command = new LoginAdminCommand(request.Email, request.Password);
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, ct);
 
             if (!result.IsSuccess)
                 return Unauthorized(result.Errors);
@@ -42,10 +42,10 @@ namespace AuthService.Api.Controllers
         [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<TokenResponse>> AuthenticateApiKey([FromHeader(Name = "X-API-KEY")] string apiKey)
+        public async Task<ActionResult<TokenResponse>> AuthenticateApiKey([FromHeader(Name = "X-API-KEY")] string apiKey, CancellationToken ct)
         {
             var command = new AuthenticateApiKeyCommand(apiKey);
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, ct);
 
             if (!result.IsSuccess)
                 return Unauthorized(result.Errors);
@@ -59,10 +59,10 @@ namespace AuthService.Api.Controllers
         [HttpPost("admins")]
         [ProducesResponseType(typeof(CreateAdminResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<CreateAdminResponse>> CreateAdmin([FromBody] CreateAdminRequest request)
+        public async Task<ActionResult<CreateAdminResponse>> CreateAdmin([FromBody] CreateAdminRequest request, CancellationToken ct)
         {
             var command = new CreateAdminCommand(request.Email, request.Password);
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, ct);
 
             if (!result.IsSuccess)
                 return BadRequest(result.Errors);
@@ -75,13 +75,13 @@ namespace AuthService.Api.Controllers
         [HttpPost("api-keys")]
         [ProducesResponseType(typeof(CreateApiKeyResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<CreateApiKeyResponse>> CreateApiKey([FromBody] CreateApiKeyRequest request)
+        public async Task<ActionResult<CreateApiKeyResponse>> CreateApiKey([FromBody] CreateApiKeyRequest request, CancellationToken ct)
         {
             var command = new CreateApiKeyCommand(request.Name,
                                                   request.Scopes,
                                                   request.ExpiresAt);
 
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, ct);
 
             if (!result.IsSuccess)
                 return BadRequest(result.Errors);
@@ -103,10 +103,10 @@ namespace AuthService.Api.Controllers
         [ProducesResponseType(typeof(ValidateApiKeyResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<ValidateApiKeyResponse>> ValidateApiKey([FromBody] ValidateApiKeyRequest request)
+        public async Task<ActionResult<ValidateApiKeyResponse>> ValidateApiKey([FromBody] ValidateApiKeyRequest request, CancellationToken ct)
         {
             var query = new ValidateApiKeyQuery(request.ApiKey);
-            var result = await _mediator.Send(query);
+            var result = await _mediator.Send(query, ct);
 
             if (!result.IsSuccess)
                 return Unauthorized(result.Errors);
@@ -134,10 +134,10 @@ namespace AuthService.Api.Controllers
         [HttpDelete("api-keys/{id}")]
         [ProducesResponseType(typeof(RevokeApiKeyResponse), StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<RevokeApiKeyResponse>> RevokeApiKey(Guid id)
+        public async Task<ActionResult<RevokeApiKeyResponse>> RevokeApiKey(Guid id, CancellationToken ct)
         {
             var command = new RevokeApiKeyCommand(id);
-            var result = await _mediator.Send(command);
+            var result = await _mediator.Send(command, ct);
 
             if (!result.IsSuccess)
                 return NotFound(result.Errors);
@@ -148,10 +148,10 @@ namespace AuthService.Api.Controllers
         [HttpGet("api-keys/{id}")]
         [ProducesResponseType(typeof(GetApiKeyByIdResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<GetApiKeyByIdResponse>> GetApiKeyById(Guid id)
+        public async Task<ActionResult<GetApiKeyByIdResponse>> GetApiKeyById(Guid id, CancellationToken ct)
         {
             var query = new GetApiKeyByIdQuery(id);
-            var result = await _mediator.Send(query);
+            var result = await _mediator.Send(query, ct);
 
             if (!result.IsSuccess)
                 return NotFound(result.Errors);
