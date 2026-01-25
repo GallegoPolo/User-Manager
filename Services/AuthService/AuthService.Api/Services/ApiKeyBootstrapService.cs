@@ -46,11 +46,10 @@ namespace AuthService.Api.Services
                 new Scope("admin")
             };
 
-            var initialApiKey = ApiKey.Create(
-                name: "Initial Bootstrap API Key",
-                keyHash: keyHash,
-                scopes: scopes,
-                expiresAt: null
+            var initialApiKey = ApiKey.Create(name: "Initial Bootstrap API Key",
+                                              keyHash: keyHash,
+                                              scopes: scopes,
+                                              expiresAt: null
             );
 
             if (!initialApiKey.IsValid)

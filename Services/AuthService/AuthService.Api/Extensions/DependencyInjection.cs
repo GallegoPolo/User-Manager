@@ -1,12 +1,8 @@
 ﻿using AuthService.Api.Services;
 using AuthService.Application.UseCases.ApiKeys.Behaviors;
 using AuthService.Application.UseCases.ApiKeys.Handlers;
-using AuthService.Domain.Interfaces.Repositories;
 using AuthService.Domain.Interfaces.Services;
 using AuthService.Domain.Services;
-using AuthService.Infrastructure.Persistence;
-using AuthService.Infrastructure.Repositories;
-using AuthService.Infrastructure.Security;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +22,7 @@ namespace AuthService.Api.Extensions
         public static IServiceCollection AddBootstrap(this IServiceCollection services)
         {
             services.AddHostedService<ApiKeyBootstrapService>();
+            services.AddHostedService<AdminBootstrapService>();
             return services;
         }
 
