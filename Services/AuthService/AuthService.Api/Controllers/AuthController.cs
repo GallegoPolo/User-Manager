@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AuthService.Api.Controllers
 {
     [ApiController]
-    [Route("api/auth/api-keys")]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -20,7 +20,59 @@ namespace AuthService.Api.Controllers
             _mediator = mediator;
         }
 
-        [HttpPost]
+        [HttpPost("login")]
+        [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<TokenResponse>> LoginAdmin([FromBody] LoginAdminRequest request)
+        {
+            var command = new LoginAdminCommand(request.Email, request.Password);
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+                return Unauthorized(result.Errors);
+
+            var dto = result.Value!;
+            var response = new TokenResponse(dto.AccessToken, dto.TokenType, dto.ExpiresIn);
+
+            return Ok(response);
+        }
+
+        [HttpPost("token")]
+        [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<TokenResponse>> AuthenticateApiKey([FromHeader(Name = "X-API-KEY")] string apiKey)
+        {
+            var command = new AuthenticateApiKeyCommand(apiKey);
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+                return Unauthorized(result.Errors);
+
+            var dto = result.Value!;
+            var response = new TokenResponse(dto.AccessToken, dto.TokenType, dto.ExpiresIn);
+
+            return Ok(response);
+        }
+
+        [HttpPost("admins")]
+        [ProducesResponseType(typeof(CreateAdminResponse), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<CreateAdminResponse>> CreateAdmin([FromBody] CreateAdminRequest request)
+        {
+            var command = new CreateAdminCommand(request.Email, request.Password);
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+                return BadRequest(result.Errors);
+
+            var response = new CreateAdminResponse(result.Value, request.Email);
+
+            return CreatedAtAction(nameof(CreateAdmin), new { id = result.Value }, response);
+        }
+
+        [HttpPost("api-keys")]
         [ProducesResponseType(typeof(CreateApiKeyResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<CreateApiKeyResponse>> CreateApiKey([FromBody] CreateApiKeyRequest request)
@@ -37,7 +89,7 @@ namespace AuthService.Api.Controllers
             var dto = result.Value!;
             var response = new CreateApiKeyResponse(Id: dto.Id,
                                                     Name: dto.Name,
-                                                    ApiKey: dto.ApiKey, 
+                                                    ApiKey: dto.ApiKey,
                                                     Scopes: dto.Scopes,
                                                     Status: dto.Status,
                                                     ExpiresAt: dto.ExpiresAt,
@@ -47,7 +99,7 @@ namespace AuthService.Api.Controllers
             return CreatedAtAction(nameof(GetApiKeyById), new { id = dto.Id }, response);
         }
 
-        [HttpPost("validate")]
+        [HttpPost("api-keys/validate")]
         [ProducesResponseType(typeof(ValidateApiKeyResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -65,7 +117,7 @@ namespace AuthService.Api.Controllers
             return Ok(response);
         }
 
-        [HttpGet]
+        [HttpGet("api-keys")]
         [ProducesResponseType(typeof(IEnumerable<ApiKeyDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<ApiKeyDTO>>> ListApiKeys()
@@ -79,7 +131,7 @@ namespace AuthService.Api.Controllers
             return Ok(result.Value);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("api-keys/{id}")]
         [ProducesResponseType(typeof(RevokeApiKeyResponse), StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status404NotFound)]
         public async Task<ActionResult<RevokeApiKeyResponse>> RevokeApiKey(Guid id)
@@ -93,7 +145,7 @@ namespace AuthService.Api.Controllers
             return NoContent();
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("api-keys/{id}")]
         [ProducesResponseType(typeof(GetApiKeyByIdResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationError), StatusCodes.Status404NotFound)]
         public async Task<ActionResult<GetApiKeyByIdResponse>> GetApiKeyById(Guid id)
@@ -113,6 +165,5 @@ namespace AuthService.Api.Controllers
                                                      CreatedAt: dto.CreatedAt);
             return Ok(response);
         }
-
     }
 }
