@@ -25,7 +25,7 @@ namespace AuthService.Infrastructure.Repositories
         {
             return await _context.ApiKeys
                 .Include(a => a.Scopes)
-                .FirstOrDefaultAsync(a => a.KeyHash.Value == hash, cancellationToken);
+                .FirstOrDefaultAsync(a => a.SecretHash.Value == hash, cancellationToken);
         }
 
         public async Task<IEnumerable<ApiKey>> GetAllAsync(CancellationToken cancellationToken = default)

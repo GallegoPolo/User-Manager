@@ -40,7 +40,7 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
             ApiKey? validApiKey = null;
             foreach (var storedApiKey in allApiKeys)
             {
-                if (_hasher.Verify(query.ApiKey, storedApiKey.KeyHash))
+                if (_hasher.Verify(query.ApiKey, storedApiKey.SecretHash))
                 {
                     validApiKey = storedApiKey;
                     break;

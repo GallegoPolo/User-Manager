@@ -25,7 +25,7 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
         {
             var allApiKeys = await _apiKeyRepository.GetAllAsync(cancellationToken);
 
-            var validApiKey = allApiKeys.FirstOrDefault(ak => _apiKeyHasher.Verify(request.ApiKey, ak.KeyHash) && ak.IsActive());
+            var validApiKey = allApiKeys.FirstOrDefault(ak => _apiKeyHasher.Verify(request.ApiKey, ak.SecretHash) && ak.IsActive());
 
             if (validApiKey == null)
                 return Result<TokenDTO>.Failure("Validate", "Invalid or inactive API Key");

@@ -30,7 +30,7 @@ namespace AuthService.Infrastructure.Persistence
                 entity.Property(a => a.CreatedAt)
                       .IsRequired();
 
-                entity.OwnsOne(a => a.KeyHash, keyHash =>
+                entity.OwnsOne(a => a.SecretHash, keyHash =>
                 {
                     keyHash.Property(h => h.Value)
                            .HasColumnName("KeyHash")
