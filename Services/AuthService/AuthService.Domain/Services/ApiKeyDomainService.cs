@@ -1,55 +1,74 @@
-using AuthService.Domain.Interfaces.Repositories;
+using AuthService.Domain.DTOs;
 using AuthService.Domain.Interfaces.Services;
-using AuthService.Domain.ValueObjects;
 using System.Security.Cryptography;
 
 namespace AuthService.Domain.Services
 {
     public class ApiKeyDomainService : IApiKeyDomainService
     {
-        private const int API_KEY_BYTES_LENGTH = 32;
-        private const string API_KEY_PREFIX = "ak_";
-        private const int MIN_API_KEY_LENGTH = 10;
+        private const string CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+        private const int PREFIX_LENGTH = 8;
+        private const int SECRET_LENGTH = 32;
 
-        private readonly IApiKeyHasher _hasher;
-
-        public ApiKeyDomainService(IApiKeyHasher hasher)
+        public GeneratedApiKeyDTO GenerateApiKey(string environment = "live")
         {
-            _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
+            var prefix = GenerateRandomString(PREFIX_LENGTH);
+            var secret = GenerateRandomString(SECRET_LENGTH);
+            var fullKey = $"ak_{environment}_{prefix}_{secret}";
+
+            return new GeneratedApiKeyDTO(fullKey, prefix, secret, environment);
         }
 
-        public string GenerateApiKey()
+        public ParsedApiKeyDTO ParseApiKey(string apiKey)
         {
-            var randomBytes = new byte[API_KEY_BYTES_LENGTH];
-            using var randomNumberGenerator = RandomNumberGenerator.Create();
-            randomNumberGenerator.GetBytes(randomBytes);
+            if (!ValidateApiKeyFormat(apiKey))
+                throw new ArgumentException("Invalid API Key format", nameof(apiKey));
 
-            var hexKey = Convert.ToHexString(randomBytes);
-            return $"{API_KEY_PREFIX}{hexKey}";
+            var parts = apiKey.Split('_');
+
+            return new ParsedApiKeyDTO(Prefix: parts[2], Secret: parts[3], Environment: parts[1]);
         }
 
-        public ApiKeyHash HashApiKey(string apiKey)
-        {
-            return _hasher.Hash(apiKey);
-        }
-
-        public bool VerifyApiKey(string apiKey, ApiKeyHash storedHash)
-        {
-            return _hasher.Verify(apiKey, storedHash);
-        }
-
+        //TODO: Create Validator for ApiKey format
         public bool ValidateApiKeyFormat(string apiKey)
         {
             if (string.IsNullOrWhiteSpace(apiKey))
                 return false;
 
-            if (!apiKey.StartsWith(API_KEY_PREFIX, StringComparison.Ordinal))
+            var parts = apiKey.Split('_');
+
+            if (parts.Length != 4)
                 return false;
 
-            if (apiKey.Length < MIN_API_KEY_LENGTH)
+            if (parts[0] != "ak")
+                return false;
+
+            var validEnvironments = new[] { "live", "test", "dev" };
+            if (!validEnvironments.Contains(parts[1]))
+                return false;
+
+            if (parts[2].Length != PREFIX_LENGTH)
+                return false;
+
+            if (parts[3].Length != SECRET_LENGTH)
                 return false;
 
             return true;
+        }
+
+        private string GenerateRandomString(int length)
+        {
+            var bytes = new byte[length];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(bytes);
+
+            var result = new char[length];
+            for (int i = 0; i < length; i++)
+            {
+                result[i] = CHARS[bytes[i] % CHARS.Length];
+            }
+
+            return new string(result);
         }
     }
 }

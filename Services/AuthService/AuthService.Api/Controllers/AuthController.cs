@@ -3,7 +3,7 @@ using AuthService.Api.Contracts.Responses;
 using AuthService.Application.UseCases.ApiKeys.Commands;
 using AuthService.Application.UseCases.ApiKeys.DTOs;
 using AuthService.Application.UseCases.ApiKeys.Queries;
-using AuthService.Domain.Common;
+using AuthService.Domain.Commons;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

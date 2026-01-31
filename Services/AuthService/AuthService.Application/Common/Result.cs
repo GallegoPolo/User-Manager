@@ -1,4 +1,4 @@
-﻿using AuthService.Domain.Common;
+﻿using AuthService.Domain.Commons;
 
 namespace AuthService.Application.Common
 {

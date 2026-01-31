@@ -1,12 +1,11 @@
-﻿using AuthService.Domain.ValueObjects;
+﻿using AuthService.Domain.DTOs;
 
 namespace AuthService.Domain.Interfaces.Services
 {
     public interface IApiKeyDomainService
     {
-        string GenerateApiKey();
-        ApiKeyHash HashApiKey(string apiKey);
-        bool VerifyApiKey(string apiKey, ApiKeyHash storedHash);
+        GeneratedApiKeyDTO GenerateApiKey(string environment = "live");
         bool ValidateApiKeyFormat(string apiKey);
+        ParsedApiKeyDTO ParseApiKey(string apiKey);
     }
 }

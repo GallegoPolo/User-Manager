@@ -1,5 +1,5 @@
 ﻿using AuthService.Application.Common;
-using AuthService.Domain.Common;
+using AuthService.Domain.Commons;
 using FluentValidation;
 using MediatR;
 

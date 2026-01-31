@@ -4,6 +4,7 @@ namespace AuthService.Domain.Interfaces.Repositories
 {
     public interface IApiKeyRepository
     {
+        Task<ApiKey?> GetByPrefixAsync(string prefix, CancellationToken cancellationToken = default);
         Task<ApiKey?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
         Task<ApiKey?> GetByHashAsync(string hash, CancellationToken cancellationToken = default);
         Task<IEnumerable<ApiKey>> GetAllAsync(CancellationToken cancellationToken = default);

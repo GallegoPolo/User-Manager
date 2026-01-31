@@ -1,7 +1,9 @@
 ﻿using AuthService.Application.Common;
 using AuthService.Application.UseCases.ApiKeys.Commands;
 using AuthService.Application.UseCases.ApiKeys.DTOs;
+using AuthService.Domain.DTOs;
 using AuthService.Domain.Interfaces.Repositories;
+using AuthService.Domain.Interfaces.Services;
 using MediatR;
 
 namespace AuthService.Application.UseCases.ApiKeys.Handlers
@@ -11,36 +13,51 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
         private readonly IApiKeyRepository _apiKeyRepository;
         private readonly IApiKeyHasher _apiKeyHasher;
         private readonly ITokenGenerator _tokenGenerator;
+        private readonly IApiKeyDomainService _domainService;
 
-        public AuthenticateApiKeyHandler(IApiKeyRepository apiKeyRepository, IApiKeyHasher apiKeyHasher, ITokenGenerator tokenGenerator)
+        public AuthenticateApiKeyHandler(IApiKeyRepository apiKeyRepository, IApiKeyHasher apiKeyHasher, ITokenGenerator tokenGenerator, IApiKeyDomainService domainService)
         {
             _apiKeyRepository = apiKeyRepository;
             _apiKeyHasher = apiKeyHasher;
             _tokenGenerator = tokenGenerator;
+            _domainService = domainService;
         }
 
-        //TODO: Vulnerability: Timing attack possible here. Consider using a constant time comparison method.
-        //Remove GetAllAsync and implement a method to get ApiKey by hash directly.
         public async Task<Result<TokenDTO>> Handle(AuthenticateApiKeyCommand request, CancellationToken cancellationToken)
         {
-            var allApiKeys = await _apiKeyRepository.GetAllAsync(cancellationToken);
+            if (!_domainService.ValidateApiKeyFormat(request.ApiKey))
+                return Result<TokenDTO>.Failure("Validate", "Invalid API Key format");
 
-            var validApiKey = allApiKeys.FirstOrDefault(ak => _apiKeyHasher.Verify(request.ApiKey, ak.SecretHash) && ak.IsActive());
+            ParsedApiKeyDTO parsedKey;
+            parsedKey = _domainService.ParseApiKey(request.ApiKey);
+            var apiKey = await _apiKeyRepository.GetByPrefixAsync(parsedKey.Prefix, cancellationToken);
 
-            if (validApiKey == null)
+            if (apiKey == null)
                 return Result<TokenDTO>.Failure("Validate", "Invalid or inactive API Key");
 
-            var scopes = validApiKey.Scopes.Select(s => s.Value).ToList();
+            if (!apiKey.IsActive())
+                return Result<TokenDTO>.Failure("Validate", "Invalid or inactive API Key");
 
-            var tokenResult = await _tokenGenerator.GenerateTokenAsync(subject: validApiKey.Id.ToString(),
-                                                                       roles: ["SERVICE"],
-                                                                       scopes: scopes,
-                                                                       additionalClaims: null,
-                                                                       cancellationToken: cancellationToken);
+            if (!_apiKeyHasher.Verify(parsedKey.Secret, apiKey.SecretHash))
+                return Result<TokenDTO>.Failure("Validate", "Invalid or inactive API Key");
+
+            var scopes = apiKey.Scopes.Select(s => s.Value);
+
+            var tokenResult = await _tokenGenerator.GenerateTokenAsync(
+                subject: apiKey.Id.ToString(),
+                roles: ["SERVICE"],
+                scopes: scopes,
+                additionalClaims: null,
+                cancellationToken: cancellationToken
+            );
 
             var expiresIn = (int)(tokenResult.ExpiresAt - DateTime.UtcNow).TotalSeconds;
 
-            var tokenDto = new TokenDTO(AccessToken: tokenResult.Token, TokenType: "Bearer", ExpiresIn: expiresIn);
+            var tokenDto = new TokenDTO(
+                AccessToken: tokenResult.Token,
+                TokenType: "Bearer",
+                ExpiresIn: expiresIn
+            );
 
             return Result<TokenDTO>.Success(tokenDto);
         }

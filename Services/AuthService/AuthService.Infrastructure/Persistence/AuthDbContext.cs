@@ -20,6 +20,10 @@ namespace AuthService.Infrastructure.Persistence
                       .IsRequired()
                       .HasMaxLength(200);
 
+                entity.Property(a => a.Prefix)
+                       .IsRequired()
+                       .HasMaxLength(8);
+
                 entity.Property(a => a.Status)
                       .IsRequired()
                       .HasConversion<int>();
@@ -30,15 +34,15 @@ namespace AuthService.Infrastructure.Persistence
                 entity.Property(a => a.CreatedAt)
                       .IsRequired();
 
-                entity.OwnsOne(a => a.SecretHash, keyHash =>
+                entity.OwnsOne(a => a.SecretHash, secretHash =>
                 {
-                    keyHash.Property(h => h.Value)
-                           .HasColumnName("KeyHash")
+                    secretHash.Property(h => h.Value)
+                           .HasColumnName("SecretHash")
                            .IsRequired()
                            .HasMaxLength(500);
 
-                    keyHash.HasIndex(h => h.Value)
-                           .HasDatabaseName("IX_ApiKeys_KeyHash");
+                    secretHash.HasIndex(h => h.Value)
+                           .HasDatabaseName("IX_ApiKeys_SecretHash");
                 });
 
                 entity.OwnsMany(a => a.Scopes, scope =>

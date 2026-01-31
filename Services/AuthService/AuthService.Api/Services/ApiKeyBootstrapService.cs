@@ -38,7 +38,7 @@ namespace AuthService.Api.Services
             _logger.LogInformation("No API Keys found. Creating initial API Key...");
 
             var plainApiKey = domainService.GenerateApiKey();
-            var keyHash = hasher.Hash(plainApiKey);
+            var keyHash = hasher.Hash(plainApiKey.Secret);
             var scopes = new List<Scope>
             {
                 new Scope("read"),
@@ -47,7 +47,8 @@ namespace AuthService.Api.Services
             };
 
             var initialApiKey = ApiKey.Create(name: "Initial Bootstrap API Key",
-                                              keyHash: keyHash,
+                                              prefix: plainApiKey.Prefix,
+                                              secretHash: keyHash,
                                               scopes: scopes,
                                               expiresAt: null
             );

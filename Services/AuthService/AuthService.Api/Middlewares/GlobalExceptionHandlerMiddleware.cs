@@ -1,6 +1,6 @@
 ﻿using AuthService.Api.Contracts.Errors;
 using AuthService.Api.Exceptions;
-using AuthService.Domain.Common;
+using AuthService.Domain.Commons;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;

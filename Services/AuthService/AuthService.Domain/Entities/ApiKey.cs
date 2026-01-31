@@ -19,14 +19,14 @@ namespace AuthService.Domain.Entities
         public DateTime? ExpiresAt { get; private set; }
         public DateTime CreatedAt { get; private set; }
 
-        public static ApiKey Create(string name, string prefix, ApiKeyHash keyHash, List<Scope> scopes, DateTime? expiresAt = null)
+        public static ApiKey Create(string name, string prefix, ApiKeyHash secretHash, List<Scope> scopes, DateTime? expiresAt = null)
         {
             var apiKey = new ApiKey
             {
                 Id = Guid.NewGuid(),
                 Name = name,
                 Prefix = prefix,
-                SecretHash = keyHash,
+                SecretHash = secretHash,
                 Scopes = scopes ?? new List<Scope>(),
                 Status = EApiKeyStatus.Active,
                 ExpiresAt = expiresAt,

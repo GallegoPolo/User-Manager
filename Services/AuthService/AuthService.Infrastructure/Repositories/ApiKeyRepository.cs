@@ -53,5 +53,10 @@ namespace AuthService.Infrastructure.Repositories
 
             _context.ApiKeys.Remove(apiKey);
         }
+
+        public async Task<ApiKey?> GetByPrefixAsync(string prefix, CancellationToken cancellationToken = default)
+        {
+            return await _context.ApiKeys.Include(ak => ak.Scopes).FirstOrDefaultAsync(ak => ak.Prefix == prefix, cancellationToken);
+        }
     }
 }
