@@ -9,11 +9,13 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
     {
         private readonly IApiKeyRepository _repository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IApiKeyCacheService _cacheService;
 
-        public RevokeApiKeyHandler(IApiKeyRepository repository, IUnitOfWork unitOfWork)
+        public RevokeApiKeyHandler(IApiKeyRepository repository, IUnitOfWork unitOfWork, IApiKeyCacheService cacheService)
         {
             _repository = repository;
             _unitOfWork = unitOfWork;
+            _cacheService = cacheService;
         }
 
         public async Task<Result<bool>> Handle(RevokeApiKeyCommand command, CancellationToken cancellationToken)
@@ -30,6 +32,8 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
 
             await _repository.UpdateAsync(apiKey, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _cacheService.RemoveCachedApiKeyAsync(apiKey.Prefix, cancellationToken);
 
             return Result<bool>.Success(true);
         }
