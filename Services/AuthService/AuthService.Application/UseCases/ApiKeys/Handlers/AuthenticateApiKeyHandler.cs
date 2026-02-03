@@ -40,38 +40,56 @@ namespace AuthService.Application.UseCases.ApiKeys.Handlers
                 return Result<TokenDTO>.Failure("Validate", "Invalid API Key format");
             }
 
-            var apiKey = await _cacheService.GetCachedApiKeyAsync(parsedKey.Prefix, cancellationToken);
+            var cachedApiKey = await _cacheService.GetCachedApiKeyAsync(parsedKey.Prefix, cancellationToken);
+            CachedApiKeyDTO apiKeyData;
 
-            if (apiKey == null)
+            if (cachedApiKey == null)
             {
-                apiKey = await _apiKeyRepository.GetByPrefixAsync(parsedKey.Prefix, cancellationToken);
+                var apiKeyFromDB = await _apiKeyRepository.GetByPrefixAsync(parsedKey.Prefix, cancellationToken);
 
-                if (apiKey == null)
+                if (apiKeyFromDB == null)
                     return Result<TokenDTO>.Failure("Validate", "Invalid or inactive API Key");
 
-                await _cacheService.SetCachedApiKeyAsync(parsedKey.Prefix, apiKey, cancellationToken);
+                apiKeyData = new CachedApiKeyDTO(apiKeyFromDB.Id,
+                                                 apiKeyFromDB.Name,
+                                                 apiKeyFromDB.Prefix,
+                                                 apiKeyFromDB.SecretHash.Value,
+                                                 apiKeyFromDB.Scopes.Select(s => s.Value).ToList(),
+                                                 apiKeyFromDB.Status,
+                                                 apiKeyFromDB.ExpiresAt,
+                                                 apiKeyFromDB.CreatedAt);
+
+                await _cacheService.SetCachedApiKeyAsync(parsedKey.Prefix, apiKeyData, cancellationToken);
+            }
+            else
+            {
+                apiKeyData = cachedApiKey;
             }
 
-            if (!apiKey.IsActive())
+            if (!apiKeyData.IsActive)
             {
                 await _cacheService.RemoveCachedApiKeyAsync(parsedKey.Prefix, cancellationToken);
                 return Result<TokenDTO>.Failure("Validate", "Invalid or inactive API Key");
             }
 
-            if (!_apiKeyHasher.Verify(parsedKey.Secret, apiKey.SecretHash))
+            var secretHash = new Domain.ValueObjects.ApiKeyHash(apiKeyData.SecretHash);
+
+            if (!_apiKeyHasher.Verify(parsedKey.Secret, secretHash))
                 return Result<TokenDTO>.Failure("Validate", "Invalid or inactive API Key");
 
-            var scopes = apiKey.Scopes.Select(s => s.Value).ToList();
-
-            var tokenResult = await _tokenGenerator.GenerateTokenAsync(subject: apiKey.Id.ToString(),
+            var tokenResult = await _tokenGenerator.GenerateTokenAsync(subject: apiKeyData.Id.ToString(),
                                                                        roles: ["SERVICE"],
-                                                                       scopes: scopes,
+                                                                       scopes: apiKeyData.Scopes, 
                                                                        additionalClaims: null,
-                                                                       cancellationToken: cancellationToken);
+                                                                       cancellationToken: cancellationToken
+            );
 
             var expiresIn = (int)(tokenResult.ExpiresAt - DateTime.UtcNow).TotalSeconds;
 
-            var tokenDto = new TokenDTO(AccessToken: tokenResult.Token, TokenType: "Bearer", ExpiresIn: expiresIn);
+            var tokenDto = new TokenDTO(AccessToken: tokenResult.Token,
+                                        TokenType: "Bearer",
+                                        ExpiresIn: expiresIn
+            );
 
             return Result<TokenDTO>.Success(tokenDto);
         }

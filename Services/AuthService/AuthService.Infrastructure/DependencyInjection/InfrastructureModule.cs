@@ -1,5 +1,5 @@
 ﻿using AuthService.Domain.Interfaces.Repositories;
-using AuthService.Infrastructure.Caching;
+using AuthService.Infrastructure.Caching.Services;
 using AuthService.Infrastructure.Configurations;
 using AuthService.Infrastructure.Persistence;
 using AuthService.Infrastructure.Repositories;

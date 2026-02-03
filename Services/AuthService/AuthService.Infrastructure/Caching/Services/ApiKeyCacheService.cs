@@ -1,11 +1,12 @@
-﻿using AuthService.Domain.Entities;
+﻿using AuthService.Domain.DTOs;
+using AuthService.Domain.Entities;
 using AuthService.Domain.Interfaces.Repositories;
 using AuthService.Infrastructure.Configurations;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
-namespace AuthService.Infrastructure.Caching
+namespace AuthService.Infrastructure.Caching.Services
 {
     public class ApiKeyCacheService : IApiKeyCacheService
     {
@@ -20,7 +21,7 @@ namespace AuthService.Infrastructure.Caching
             _cacheDuration = TimeSpan.FromMinutes(minutes);
         }
 
-        public async Task<ApiKey?> GetCachedApiKeyAsync(string prefix, CancellationToken cancellationToken = default)
+        public async Task<CachedApiKeyDTO?> GetCachedApiKeyAsync(string prefix, CancellationToken cancellationToken = default)
         {
             var cacheKey = $"{KEY_PREFIX}{prefix}";
             var cachedData = await _cache.GetStringAsync(cacheKey, cancellationToken);
@@ -28,10 +29,10 @@ namespace AuthService.Infrastructure.Caching
             if (string.IsNullOrEmpty(cachedData))
                 return null;
 
-            return JsonSerializer.Deserialize<ApiKey>(cachedData);
+            return JsonSerializer.Deserialize<CachedApiKeyDTO>(cachedData);
         }
 
-        public async Task SetCachedApiKeyAsync(string prefix, ApiKey apiKey, CancellationToken cancellationToken = default)
+        public async Task SetCachedApiKeyAsync(string prefix, CachedApiKeyDTO apiKey, CancellationToken cancellationToken = default)
         {
             var cacheKey = $"{KEY_PREFIX}{prefix}";
             var serialized = JsonSerializer.Serialize(apiKey);
