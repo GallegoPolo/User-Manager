@@ -1,4 +1,5 @@
 using AuditService.Api.Extensions;
+using AuditService.Api.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +17,8 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddAuditServices(builder.Configuration);
 
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddCheck<MongoDbHealthCheck>("mongodb", tags: new[] { "ready" });
 
 var app = builder.Build();
 
@@ -33,6 +35,11 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+
+app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/ready", new()
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 
 app.Run();
