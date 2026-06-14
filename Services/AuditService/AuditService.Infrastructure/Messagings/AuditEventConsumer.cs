@@ -2,6 +2,7 @@
 using AuditService.Domain.Entities;
 using AuditService.Domain.Enums;
 using AuditService.Domain.Interfaces.Repositories;
+using AuditService.Infrastructure.Resiliences;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -270,5 +271,54 @@ public class AuditEventConsumer : BackgroundService
         {
             _logger.LogError(ex, "Erro ao fechar recursos RabbitMQ durante dispose");
         }
+    }
+
+    private async Task ProcessEventAsync(string message, CancellationToken cancellationToken)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
+
+        var auditEvent = JsonSerializer.Deserialize<AuditEventBase>(message);
+
+        if (auditEvent == null)
+        {
+            _logger.LogWarning("Evento inválido recebido (null). Ignorando.");
+            return;
+        }
+
+        // Verificar idempotência (evento já foi processado?)
+        var exists = await repository.EventExistsAsync(auditEvent.EventId, cancellationToken);
+        if (exists)
+        {
+            _logger.LogInformation("Evento {EventId} já processado. Ignorando duplicata.", auditEvent.EventId);
+            return;
+        }
+
+        var eventType = ConvertToEventTypeEnum(auditEvent.EventType);
+
+        // Criar entidade de domínio
+        var auditLog = AuditLog.Create(
+            auditEvent.EventId,
+            auditEvent.AggregateId,
+            auditEvent.AggregateType,
+            eventType,
+            auditEvent.PerformedBy,
+            auditEvent.PerformedAt,
+            auditEvent.Payload
+        );
+
+        // ✅ APLICAR RETRY POLICY
+        var writePolicy = RetryPolicies.CreateMongoWritePolicy();
+
+        await writePolicy.ExecuteAsync(async () =>
+        {
+            await repository.AddAsync(auditLog, cancellationToken);
+        });
+
+        _logger.LogInformation(
+            "Evento {EventType} processado com sucesso. AggregateId: {AggregateId}",
+            auditEvent.EventType,
+            auditEvent.AggregateId
+        );
     }
 }
