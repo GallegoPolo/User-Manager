@@ -1,22 +1,8 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { login as loginRequest } from "../services/authService";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { login as loginRequest } from "../api/authService";
 import type { LoginRequest } from "../types/auth";
-
-interface AuthContextValue {
-  token: string | null;
-  isAuthenticated: boolean;
-  login: (credentials: LoginRequest) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { setStoredToken } from "../api/tokenStore.ts";
+import { AuthContext } from "./AuthContextDefinition";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
@@ -24,10 +10,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (credentials: LoginRequest) => {
     const response = await loginRequest(credentials);
     setToken(response.accessToken);
+    setStoredToken(response.accessToken);
   }, []);
 
   const logout = useCallback(() => {
     setToken(null);
+    setStoredToken(null);
   }, []);
 
   const value = useMemo(
@@ -41,14 +29,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth deve ser usado dentro de AuthProvider");
-  }
-
-  return context;
 }

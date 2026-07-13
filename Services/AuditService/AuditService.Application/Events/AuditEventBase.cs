@@ -1,6 +1,6 @@
 ﻿namespace AuditService.Application.Events
 {
-    public abstract class AuditEventBase
+    public class AuditEventBase
     {
         public Guid EventId { get; set; } = Guid.NewGuid();
         public string EventType { get; set; } = string.Empty;

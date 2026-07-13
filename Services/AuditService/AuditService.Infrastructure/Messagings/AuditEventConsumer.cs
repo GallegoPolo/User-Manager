@@ -159,7 +159,10 @@ public class AuditEventConsumer : BackgroundService
 
         _logger.LogDebug("Evento recebido da rota: {RoutingKey}", deliveryArgs.RoutingKey);
 
-        return JsonSerializer.Deserialize<AuditEventBase>(messageText);
+        return JsonSerializer.Deserialize<AuditEventBase>(messageText, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
     }
 
     private AuditLog CreateAuditLogFromEvent(AuditEventBase auditEvent)
@@ -173,8 +176,41 @@ public class AuditEventConsumer : BackgroundService
             eventType,
             auditEvent.PerformedBy,
             auditEvent.PerformedAt,
-            auditEvent.Payload
+            NormalizePayload(auditEvent.Payload)
         );
+    }
+
+    private static Dictionary<string, object>? NormalizePayload(Dictionary<string, object>? payload)
+    {
+        if (payload is null)
+            return null;
+
+        var normalized = new Dictionary<string, object>();
+        foreach (var kvp in payload)
+        {
+            var value = ConvertJsonElementValue(kvp.Value);
+            if (value is not null)
+                normalized[kvp.Key] = value;
+        }
+        return normalized;
+    }
+
+    private static object? ConvertJsonElementValue(object? value)
+    {
+        if (value is not JsonElement element)
+            return value;
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            JsonValueKind.Array => element.EnumerateArray().Select(e => ConvertJsonElementValue(e)).ToList(),
+            JsonValueKind.Object => element.EnumerateObject().ToDictionary(p => p.Name, p => ConvertJsonElementValue(p.Value)),
+            _ => element.ToString()
+        };
     }
 
     private EEventType ConvertToEventTypeEnum(string eventTypeString)
