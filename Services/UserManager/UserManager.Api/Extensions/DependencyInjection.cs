@@ -1,10 +1,14 @@
 ﻿using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using UserManager.Application.Events.Interfaces;
+using UserManager.Application.Outbox.Interfaces;
 using UserManager.Application.UseCases.Users.Behaviors;
 using UserManager.Application.UseCases.Users.Handlers;
 using UserManager.Domain.Interfaces;
 using UserManager.Domain.Services;
+using UserManager.Infrastructure.Messaging;
+using UserManager.Infrastructure.Outbox;
 using UserManager.Infrastructure.Persistence;
 using UserManager.Infrastructure.Repositories;
 
@@ -32,6 +36,10 @@ namespace UserManager.Api.Extensions
         {
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IOutboxRepository, OutboxRepository>();
+            services.AddScoped<OutboxRepository>(); 
+            services.AddScoped<IAuditEventPublisher, RabbitMqAuditEventPublisher>();
+            services.AddHostedService<OutboxProcessorBackgroundService>();
             return services;
         }
 
@@ -43,5 +51,10 @@ namespace UserManager.Api.Extensions
             return services;
         }
 
+        public static IServiceCollection AddMessaging(this IServiceCollection services, ConfigurationManager configuration)
+        {
+            services.Configure<RabbitMqSettings>(configuration.GetSection("RabbitMq"));
+            return services;
+        }
     }
 }

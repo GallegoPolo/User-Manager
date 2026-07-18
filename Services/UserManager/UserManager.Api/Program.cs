@@ -20,6 +20,7 @@ builder.Services
        .AddDomainServices()
        .AddInfrastructure()
        .AddPersistence(builder.Configuration);
+builder.Services.AddMessaging(builder.Configuration);
 
 var app = builder.Build();
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UserManager.Domain.Entities;
+using UserManager.Infrastructure.Outbox;
 
 namespace UserManager.Infrastructure.Persistence
 {
@@ -8,6 +9,7 @@ namespace UserManager.Infrastructure.Persistence
         public UserManagerDbContext(DbContextOptions<UserManagerDbContext> options) : base(options) { }
 
         public DbSet<User> Users => Set<User>();
+        public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -18,7 +20,19 @@ namespace UserManager.Infrastructure.Persistence
                 entity.Property(u => u.Name).IsRequired().HasMaxLength(200);
                 entity.Property(u => u.Email).IsRequired().HasMaxLength(200);
                 entity.HasIndex(u => u.Email).IsUnique();
+                entity.Ignore(u => u.DomainEvents);
                 entity.Ignore(u => u.Notifications);
+            });
+
+            modelBuilder.Entity<OutboxMessage>(entity =>
+            {
+                entity.ToTable("OutboxMessages");
+                entity.HasKey(m => m.Id);
+                entity.Property(m => m.EventType).IsRequired().HasMaxLength(100);
+                entity.Property(m => m.AggregateId).IsRequired().HasMaxLength(100);
+                entity.Property(m => m.AggregateType).IsRequired().HasMaxLength(100);
+                entity.Property(m => m.PayloadJson).IsRequired();
+                entity.HasIndex(m => m.ProcessedAt); // Filtrar mais a query para processar
             });
         }
 
