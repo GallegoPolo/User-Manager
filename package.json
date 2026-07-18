@@ -2,12 +2,13 @@
   "name": "user-manager",
   "private": true,
   "scripts": {
-    "dev:auth": "dotnet run --project Services/AuthService/AuthService.Api",
-    "dev:users": "dotnet run --project Services/UserManager/UserManager.Api",
-    "dev:audit": "dotnet run --project Services/AuditService/AuditService.Api",
-    "dev:audit-worker": "dotnet run --project Services/AuditService/AuditService.Worker",
+    "build:backend": "dotnet build Services/AuthService/AuthService.slnx && dotnet build Services/UserManager/user-manager.sln && dotnet build Services/AuditService/AuditService.slnx",
+    "dev:auth": "dotnet run --no-build --project Services/AuthService/AuthService.Api",
+    "dev:users": "dotnet run --no-build --project Services/UserManager/UserManager.Api",
+    "dev:audit": "dotnet run --no-build --project Services/AuditService/AuditService.Api",
+    "dev:audit-worker": "dotnet run --no-build --project Services/AuditService/AuditService.Worker",
     "dev:frontend": "npm run dev --prefix frontend",
-    "dev": "concurrently -n auth,users,audit,worker,web -c blue,green,yellow,cyan,magenta \"npm run dev:auth\" \"npm run dev:users\" \"npm run dev:audit\" \"npm run dev:audit-worker\" \"npm run dev:frontend\"",
+    "dev": "npm run build:backend && concurrently -n auth,users,audit,worker,web -c blue,green,yellow,cyan,magenta \"npm run dev:auth\" \"npm run dev:users\" \"npm run dev:audit\" \"npm run dev:audit-worker\" \"npm run dev:frontend\"",
     "db:migrate": "dotnet ef database update --project Services/AuthService/AuthService.Infrastructure --startup-project Services/AuthService/AuthService.Api && dotnet ef database update --project Services/UserManager/UserManager.Infrastructure --startup-project Services/UserManager/UserManager.Api"
   },
   "devDependencies": {
