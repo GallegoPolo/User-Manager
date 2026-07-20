@@ -30,9 +30,6 @@ namespace UserManager.Application.UseCases.Users.Handlers
 
             user.Update(command.Name, command.Email);
 
-            if (!user.IsValid)
-                return Result<Guid>.Failure(user.Notifications.ToValidationErrors());
-
             await _repository.UpdateAsync(user);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 

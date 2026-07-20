@@ -6,6 +6,7 @@ using System.Text.Json;
 using UserManager.Api.Contracts.Errors;
 using UserManager.Api.Exceptions;
 using UserManager.Domain.Common;
+using UserManager.Domain.Exceptions;
 
 namespace UserManager.Api.Middleware
 {
@@ -52,6 +53,7 @@ namespace UserManager.Api.Middleware
             return ex switch
             {
                 ValidationException ve => MapValidationException(ve),
+                DomainException de => MapDomainException(de),
                 NotFoundException nfe => MapNotFoundException(nfe),
                 DbUpdateException dbe => MapDatabaseException(dbe, env),
                 _ => MapGenericException(ex, env)
@@ -66,6 +68,18 @@ namespace UserManager.Api.Middleware
                 title: "Validation Error",
                 status: (int)HttpStatusCode.BadRequest,
                 errors: errors,
+                traceId: Activity.Current?.Id ?? Guid.NewGuid().ToString(),
+                timestamp: DateTime.UtcNow,
+                detail: null
+            );
+        }
+
+        private static ErrorResponse MapDomainException(DomainException ex)
+        {
+            return new ErrorResponse(
+                title: "Domain Rule Violation",
+                status: (int)HttpStatusCode.UnprocessableEntity,
+                errors: [new ValidationError("Domain", ex.Message)],
                 traceId: Activity.Current?.Id ?? Guid.NewGuid().ToString(),
                 timestamp: DateTime.UtcNow,
                 detail: null

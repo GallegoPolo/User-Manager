@@ -26,9 +26,6 @@ namespace UserManager.Application.UseCases.Users.Handlers
 
             var user = User.Create(command.Name, command.Email);
 
-            if (!user.IsValid)
-                return Result<Guid>.Failure(user.Notifications.ToValidationErrors());
-
             await _repository.AddAsync(user);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
