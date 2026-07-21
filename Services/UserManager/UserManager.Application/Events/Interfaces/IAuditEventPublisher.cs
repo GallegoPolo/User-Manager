@@ -2,7 +2,8 @@
 {
     public interface IAuditEventPublisher
     {
-        Task PublishAsync(string eventType,
+        Task PublishAsync(Guid eventId,
+                          string eventType,
                           string aggregateId,
                           string aggregateType,
                           string performedBy,

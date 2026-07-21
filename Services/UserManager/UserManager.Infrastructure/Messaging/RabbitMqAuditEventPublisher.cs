@@ -18,7 +18,8 @@ public class RabbitMqAuditEventPublisher : IAuditEventPublisher
         _logger = logger;
     }
 
-    public async Task PublishAsync(string eventType,
+    public async Task PublishAsync(Guid eventId,
+                                   string eventType,
                                    string aggregateId,
                                    string aggregateType,
                                    string performedBy,
@@ -44,7 +45,7 @@ public class RabbitMqAuditEventPublisher : IAuditEventPublisher
 
         var envelope = new
         {
-            eventId = Guid.NewGuid(),
+            eventId,
             eventType,
             aggregateId,
             aggregateType,

@@ -41,7 +41,8 @@ public class OutboxProcessorBackgroundService : BackgroundService
         {
             try
             {
-                await publisher.PublishAsync(eventType: message.EventType,
+                await publisher.PublishAsync(eventId: message.Id,
+                                             eventType: message.EventType,
                                              aggregateId: message.AggregateId,
                                              aggregateType: message.AggregateType,
                                              performedBy: "system", // TODO: JWT no UserManager ainda não é obrigatório
