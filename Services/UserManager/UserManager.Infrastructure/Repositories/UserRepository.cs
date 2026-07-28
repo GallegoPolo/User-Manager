@@ -24,12 +24,10 @@ namespace UserManager.Infrastructure.Repositories
             _context.Users.Update(user);
         }
 
-        public async Task DeleteAsync(Guid id)
+        public Task DeleteAsync(User user)
         {
-            var user = await GetByIdAsync(id);
-            if (user == null) return;
-
             _context.Users.Remove(user);
+            return Task.CompletedTask;
         }
 
         public async Task<User?> GetByIdAsync(Guid id)

@@ -24,7 +24,9 @@ namespace UserManager.Application.UseCases.Users.Handlers
             if (user == null)
                 return Result<bool>.Failure(new ValidationError("Id", "User not found"));
 
-            await _repository.DeleteAsync(command.Id);
+            user.Delete(); 
+
+            await _repository.DeleteAsync(user);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             return Result<bool>.Success(true);

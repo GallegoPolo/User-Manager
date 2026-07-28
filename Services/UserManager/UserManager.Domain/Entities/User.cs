@@ -6,7 +6,6 @@ namespace UserManager.Domain.Entities;
 
 public class User : IHasDomainEvents
 {
-    // Construtor privado (só para EF Core)    
     private User() { }
     private readonly List<IDomainEvent> _domainEvents = new();
     public const int MAX_NAME_LENGTH = 200;
@@ -43,7 +42,12 @@ public class User : IHasDomainEvents
         Name = name;
         Email = email;
 
-        //TODO: Implementar evento de atualização de usuário
+        _domainEvents.Add(new UserUpdatedDomainEvent(Id, Name, Email));
+    }
+
+    public void Delete()
+    {
+        _domainEvents.Add(new UserDeletedDomainEvent(Id, Name, Email));
     }
 
     private static void EnsureValid(string name, string email)
