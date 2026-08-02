@@ -1,0 +1,66 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Auth Service",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/Services/AuthService/AuthService.Api/bin/Debug/net10.0/AuthService.Api.dll",
+      "cwd": "${workspaceFolder}/Services/AuthService/AuthService.Api",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "User Manager",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/Services/UserManager/UserManager.Api/bin/Debug/net10.0/UserManager.Api.dll",
+      "cwd": "${workspaceFolder}/Services/UserManager/UserManager.Api",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "console": "internalConsole"
+    },
+    {
+      "name": "Audit Api",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/Services/AuditService/AuditService.Api/bin/Debug/net10.0/AuditService.Api.dll",
+      "cwd": "${workspaceFolder}/Services/AuditService/AuditService.Api",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:7175"
+      }
+    },
+    {
+      "name": "Audit Worker",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/Services/AuditService/AuditService.Worker/bin/Debug/net10.0/AuditService.Worker.dll",
+      "cwd": "${workspaceFolder}/Services/AuditService/AuditService.Worker",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "🚀 All Backend Services",
+      "configurations": [
+        "Auth Service",
+        "User Manager",
+        "Audit Api",
+        "Audit Worker"
+      ],
+      "stopAll": true
+    }
+  ]
+}
