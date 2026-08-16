@@ -10,7 +10,8 @@
       "stopAtEntry": false,
       "console": "internalConsole",
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5149"
       }
     },
     {
@@ -21,7 +22,8 @@
       "cwd": "${workspaceFolder}/Services/UserManager/UserManager.Api",
       "stopAtEntry": false,
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5255"
       },
       "console": "internalConsole"
     },
