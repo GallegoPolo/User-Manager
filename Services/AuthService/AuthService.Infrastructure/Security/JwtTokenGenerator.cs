@@ -38,7 +38,7 @@ namespace AuthService.Infrastructure.Security
 
             foreach (var role in roles ?? Enumerable.Empty<string>())
             {
-                claims.Add(new Claim(ClaimTypes.Role, role));
+                claims.Add(new Claim("role", role));
             }
 
             foreach (var scope in scopes ?? Enumerable.Empty<string>())
@@ -71,7 +71,7 @@ namespace AuthService.Infrastructure.Security
             );
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenResult = new TokenResult{Token = tokenHandler.WriteToken(token), ExpiresAt = token.ValidTo};
+            var tokenResult = new TokenResult { Token = tokenHandler.WriteToken(token), ExpiresAt = token.ValidTo };
 
             return Task.FromResult(tokenResult);
         }

@@ -6,8 +6,8 @@ using AuthService.Domain.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
 namespace AuthService.Api.Extensions
@@ -47,6 +47,7 @@ namespace AuthService.Api.Extensions
             })
             .AddJwtBearer(options =>
             {
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -56,6 +57,8 @@ namespace AuthService.Api.Extensions
                     ValidIssuer = jwtSettings["Issuer"],
                     ValidAudience = jwtSettings["Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+                    RoleClaimType = "role",
+                    NameClaimType = JwtRegisteredClaimNames.Sub,
                     ClockSkew = TimeSpan.Zero
                 };
             });

@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UserManager.Api.Contracts.Requests;
 using UserManager.Api.Contracts.Responses;
@@ -7,6 +8,7 @@ using UserManager.Application.UseCases.Users.Queries;
 
 namespace UserManager.Api.Controllers
 {
+    [Authorize(Policy = "AdminOnly")]
     [ApiController]
     [Route("api/users")]
     public class UserController : ControllerBase
