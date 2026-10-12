@@ -35,8 +35,11 @@ public class RabbitMqAuditEventPublisher : IAuditEventPublisher
             Password = _settings.Password
         };
 
+        var channelOptions = new CreateChannelOptions(publisherConfirmationsEnabled: true,
+                                                      publisherConfirmationTrackingEnabled: true);
+
         using var connection = await factory.CreateConnectionAsync(cancellationToken);
-        using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+        using var channel = await connection.CreateChannelAsync(channelOptions, cancellationToken);
 
         await channel.ExchangeDeclareAsync(exchange: _settings.ExchangeName,
                                            type: ExchangeType.Topic,
@@ -57,9 +60,12 @@ public class RabbitMqAuditEventPublisher : IAuditEventPublisher
         var json = JsonSerializer.Serialize(envelope);
         var body = Encoding.UTF8.GetBytes(json);
         var routingKey = $"audit.{eventType}";
+        var properties = new BasicProperties { Persistent = true };
 
         await channel.BasicPublishAsync(exchange: _settings.ExchangeName,
                                         routingKey: routingKey,
+                                        mandatory: true,
+                                        basicProperties: properties,
                                         body: body,
                                         cancellationToken: cancellationToken);
 
