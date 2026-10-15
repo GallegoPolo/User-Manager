@@ -1,16 +1,11 @@
-﻿using AuditService.Application.Events;
-using AuditService.Domain.Entities;
-using AuditService.Domain.Enums;
+﻿using AuditService.Domain.Entities;
 using AuditService.Domain.Interfaces.Repositories;
-using AuditService.Infrastructure.Resiliences;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System.Text;
-using System.Text.Json;
 
 namespace AuditService.Infrastructure.Messagings;
 
@@ -128,23 +123,23 @@ public class AuditEventConsumer : BackgroundService
 
     private async Task HandleEventReceivedAsync(BasicDeliverEventArgs deliveryArgs, CancellationToken ct)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
-
         try
         {
-            var auditEvent = DeserializeEvent(deliveryArgs);
+            var parseResult = AuditEventMessageParser.Parse(deliveryArgs.Body);
 
-            if (auditEvent is null)
+            if (!parseResult.IsSuccess)
             {
-                await RejectInvalidEventAsync(deliveryArgs, ct);
+                await RejectInvalidEventAsync(deliveryArgs, parseResult.Error!, ct);
                 return;
             }
 
-            var auditLog = CreateAuditLogFromEvent(auditEvent);
+            using var scope = _scopeFactory.CreateScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
+
+            var auditLog = parseResult.Data!;
             var wasSaved = await repository.AddAsync(auditLog, ct);
 
-            await AcknowledgeEventAsync(deliveryArgs, auditEvent, wasSaved, ct);
+            await AcknowledgeEventAsync(deliveryArgs, auditLog, wasSaved, ct);
         }
         catch (Exception ex)
         {
@@ -152,85 +147,12 @@ public class AuditEventConsumer : BackgroundService
         }
     }
 
-    private AuditEventBase? DeserializeEvent(BasicDeliverEventArgs deliveryArgs)
+    private async Task RejectInvalidEventAsync(BasicDeliverEventArgs deliveryArgs, string reason, CancellationToken ct)
     {
-        var messageBody = deliveryArgs.Body.ToArray();
-        var messageText = Encoding.UTF8.GetString(messageBody);
+        _logger.LogError("Evento rejeitado sem nova tentativa (erro permanente). RoutingKey: {RoutingKey} | Motivo: {Reason}",
+                         deliveryArgs.RoutingKey,
+                         reason);
 
-        _logger.LogDebug("Evento recebido da rota: {RoutingKey}", deliveryArgs.RoutingKey);
-
-        return JsonSerializer.Deserialize<AuditEventBase>(messageText, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
-    }
-
-    private AuditLog CreateAuditLogFromEvent(AuditEventBase auditEvent)
-    {
-        var eventType = ConvertToEventTypeEnum(auditEvent.EventType);
-
-        return AuditLog.Create(
-            auditEvent.EventId,
-            auditEvent.AggregateId,
-            auditEvent.AggregateType,
-            eventType,
-            auditEvent.PerformedBy,
-            auditEvent.PerformedAt,
-            NormalizePayload(auditEvent.Payload)
-        );
-    }
-
-    private static Dictionary<string, object>? NormalizePayload(Dictionary<string, object>? payload)
-    {
-        if (payload is null)
-            return null;
-
-        var normalized = new Dictionary<string, object>();
-        foreach (var kvp in payload)
-        {
-            var value = ConvertJsonElementValue(kvp.Value);
-            if (value is not null)
-                normalized[kvp.Key] = value;
-        }
-        return normalized;
-    }
-
-    private static object? ConvertJsonElementValue(object? value)
-    {
-        if (value is not JsonElement element)
-            return value;
-
-        return element.ValueKind switch
-        {
-            JsonValueKind.String => element.GetString(),
-            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.Null => null,
-            JsonValueKind.Array => element.EnumerateArray().Select(e => ConvertJsonElementValue(e)).ToList(),
-            JsonValueKind.Object => element.EnumerateObject().ToDictionary(p => p.Name, p => ConvertJsonElementValue(p.Value)),
-            _ => element.ToString()
-        };
-    }
-
-    private EEventType ConvertToEventTypeEnum(string eventTypeString)
-    {
-        return eventTypeString switch
-        {
-            "user.created" => EEventType.UserCreated,
-            "user.updated" => EEventType.UserUpdated,
-            "user.deleted" => EEventType.UserDeleted,
-            "admin.logged_in" => EEventType.AdminLoggedIn,
-            "admin.created" => EEventType.AdminCreated,
-            "api_key.created" => EEventType.ApiKeyCreated,
-            "api_key.revoked" => EEventType.ApiKeyRevoked,
-            _ => throw new ArgumentException($"Tipo de evento desconhecido: {eventTypeString}", nameof(eventTypeString))
-        };
-    }
-
-    private async Task RejectInvalidEventAsync(BasicDeliverEventArgs deliveryArgs, CancellationToken ct)
-    {
-        _logger.LogWarning("Evento rejeitado: corpo da mensagem inválido ou nulo");
         await _rabbitChannel!.BasicNackAsync(
             deliveryTag: deliveryArgs.DeliveryTag,
             multiple: false,
@@ -240,7 +162,7 @@ public class AuditEventConsumer : BackgroundService
 
     private async Task AcknowledgeEventAsync(
         BasicDeliverEventArgs deliveryArgs,
-        AuditEventBase auditEvent,
+        AuditLog auditLog,
         bool wasSaved,
         CancellationToken ct)
     {
@@ -248,14 +170,14 @@ public class AuditEventConsumer : BackgroundService
         {
             _logger.LogInformation(
                 "Evento processado com sucesso: {EventId} | Tipo: {EventType}",
-                auditEvent.EventId,
-                auditEvent.EventType);
+                auditLog.EventId,
+                auditLog.EventType);
         }
         else
         {
             _logger.LogInformation(
                 "Evento duplicado ignorado: {EventId}",
-                auditEvent.EventId);
+                auditLog.EventId);
         }
 
         await _rabbitChannel!.BasicAckAsync(
@@ -307,54 +229,5 @@ public class AuditEventConsumer : BackgroundService
         {
             _logger.LogError(ex, "Erro ao fechar recursos RabbitMQ durante dispose");
         }
-    }
-
-    private async Task ProcessEventAsync(string message, CancellationToken cancellationToken)
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
-
-        var auditEvent = JsonSerializer.Deserialize<AuditEventBase>(message);
-
-        if (auditEvent == null)
-        {
-            _logger.LogWarning("Evento inválido recebido (null). Ignorando.");
-            return;
-        }
-
-        // Verificar idempotência (evento já foi processado?)
-        var exists = await repository.EventExistsAsync(auditEvent.EventId, cancellationToken);
-        if (exists)
-        {
-            _logger.LogInformation("Evento {EventId} já processado. Ignorando duplicata.", auditEvent.EventId);
-            return;
-        }
-
-        var eventType = ConvertToEventTypeEnum(auditEvent.EventType);
-
-        // Criar entidade de domínio
-        var auditLog = AuditLog.Create(
-            auditEvent.EventId,
-            auditEvent.AggregateId,
-            auditEvent.AggregateType,
-            eventType,
-            auditEvent.PerformedBy,
-            auditEvent.PerformedAt,
-            auditEvent.Payload
-        );
-
-        // ✅ APLICAR RETRY POLICY
-        var writePolicy = RetryPolicies.CreateMongoWritePolicy();
-
-        await writePolicy.ExecuteAsync(async () =>
-        {
-            await repository.AddAsync(auditLog, cancellationToken);
-        });
-
-        _logger.LogInformation(
-            "Evento {EventType} processado com sucesso. AggregateId: {AggregateId}",
-            auditEvent.EventType,
-            auditEvent.AggregateId
-        );
     }
 }

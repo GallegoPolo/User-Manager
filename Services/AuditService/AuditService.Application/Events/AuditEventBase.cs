@@ -2,7 +2,7 @@
 {
     public class AuditEventBase
     {
-        public Guid EventId { get; set; } = Guid.NewGuid();
+        public required Guid EventId { get; init; }
         public string EventType { get; set; } = string.Empty;
         public string AggregateId { get; set; } = string.Empty;
         public string AggregateType { get; set; } = string.Empty;
