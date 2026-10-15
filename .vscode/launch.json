@@ -49,7 +49,7 @@
       "stopAtEntry": false,
       "console": "internalConsole",
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development"
       }
     }
   ],
@@ -62,7 +62,7 @@
         "Audit Api",
         "Audit Worker"
       ],
-      "stopAll": true
+      "stopAll": false
     }
   ]
 }

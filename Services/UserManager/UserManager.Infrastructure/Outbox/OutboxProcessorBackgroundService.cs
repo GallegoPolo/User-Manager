@@ -23,7 +23,19 @@ public class OutboxProcessorBackgroundService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await ProcessPendingMessagesAsync(stoppingToken);
+            try
+            {
+                await ProcessPendingMessagesAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha no ciclo da Outbox. Nova tentativa em {PollIntervalSeconds}s.", PollIntervalSeconds);
+            }
+
             await Task.Delay(TimeSpan.FromSeconds(PollIntervalSeconds), stoppingToken);
         }
     }
@@ -52,7 +64,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
 
                 await outboxRepository.MarkAsProcessedAsync(message.Id, cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 // Não marca como processada, tenta de novo no próximo ciclo.
                 // TODO: (poison message), não implementado agora.
