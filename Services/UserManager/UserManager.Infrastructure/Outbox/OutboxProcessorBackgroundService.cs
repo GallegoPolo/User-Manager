@@ -9,6 +9,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
 {
     private const int PollIntervalSeconds = 5;
     private const int BatchSize = 20;
+    private static readonly TimeSpan LeaseDuration = TimeSpan.FromSeconds(30);
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OutboxProcessorBackgroundService> _logger;
@@ -47,9 +48,9 @@ public class OutboxProcessorBackgroundService : BackgroundService
         var outboxRepository = scope.ServiceProvider.GetRequiredService<OutboxRepository>();
         var publisher = scope.ServiceProvider.GetRequiredService<IAuditEventPublisher>();
 
-        var pendingMessages = await outboxRepository.GetPendingAsync(BatchSize, cancellationToken);
+        var claimedMessages = await outboxRepository.ClaimPendingAsync(BatchSize, LeaseDuration, cancellationToken);
 
-        foreach (var message in pendingMessages)
+        foreach (var message in claimedMessages)
         {
             try
             {

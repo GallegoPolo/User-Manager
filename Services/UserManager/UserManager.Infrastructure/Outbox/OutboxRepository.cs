@@ -19,13 +19,25 @@ namespace UserManager.Infrastructure.Outbox
             _context.Set<OutboxMessage>().Add(message); 
         }
 
-        public Task<List<OutboxMessage>> GetPendingAsync(int batchSize, CancellationToken cancellationToken)
+        public async Task<List<OutboxMessage>> ClaimPendingAsync(int batchSize, TimeSpan leaseDuration, CancellationToken cancellationToken)
         {
-            return _context.Set<OutboxMessage>()
-                .Where(m => m.ProcessedAt == null)
-                .OrderBy(m => m.OccurredAt)
-                .Take(batchSize)
+            var claimed = await _context.Set<OutboxMessage>()
+                .FromSql($"""
+                    UPDATE "OutboxMessages"
+                    SET "LockedUntil" = now() + {leaseDuration}
+                    WHERE "Id" IN (
+                        SELECT "Id"
+                        FROM "OutboxMessages"
+                        WHERE "ProcessedAt" IS NULL
+                          AND ("LockedUntil" IS NULL OR "LockedUntil" < now())
+                        ORDER BY "OccurredAt"
+                        LIMIT {batchSize}
+                        FOR UPDATE SKIP LOCKED)
+                    RETURNING *
+                    """)
                 .ToListAsync(cancellationToken);
+
+            return claimed.OrderBy(m => m.OccurredAt).ToList();
         }
 
         public async Task MarkAsProcessedAsync(Guid outboxMessageId, CancellationToken cancellationToken)

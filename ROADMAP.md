@@ -16,7 +16,7 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 | Como evitamos duplicação? | índice único em `eventId` (AuditService), A3 | 🟡 |
 | Uma falha no worker derruba a API? | A2 | ✅ |
 | O que acontece com uma mensagem inválida? | A3 | ✅ |
-| Dois workers pegam a mesma mensagem? Como escalar os workers? | A4 | ⏳ |
+| Dois workers pegam a mesma mensagem? Como escalar os workers? | A4 | ✅ |
 | Como evitar retry infinito? | A5 | ⏳ |
 | Por que o domínio não conhece o RabbitMQ? | A6 | 🟡 |
 | Como rastrear uma requisição entre vários microsserviços? | D1, D2 | ⏳ |
@@ -36,7 +36,7 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 ## Ordem escolhida (intercalada)
 
 ```text
-A1 ✅ → A2 ✅ → A3 ✅ → A4 → D1 → C → A5 → A6 → B → D2 → E
+A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D1 → C → A5 → A6 → B → D2 → E
 ```
 
 Por quê:
@@ -56,8 +56,8 @@ Por quê:
 - [x] **A3 — Consumidor: erro transitório vs. permanente**
   - [x] **A3.1 — Classificação da mensagem** (`2ec3ceb`): `AuditEventMessageParser` devolve `Result<AuditLog>` (sem exceção para entrada inválida); `EventId` obrigatório (`required`); inválida → `nack(requeue: false)`.
   - [x] **A3.2 — Dead Letter Queue**: o consumidor declara `audit_exchange.dlx` (fanout) e `audit_events.dead-letter`; a policy `audit-events-dlx` (`^audit_events$` → `dead-letter-exchange`) liga a fila principal à DLX. Localmente a policy vem de `docker/rabbitmq/definitions.json`, importado no boot. Inválida → quarentena com `x-death` (`reason: rejected`); erro transitório continua voltando para a fila. Testes de integração com Testcontainers.
-- [ ] **A4 — Concorrência na Outbox**
-  Claim com `FOR UPDATE SKIP LOCKED` para vários workers não publicarem a mesma mensagem.
+- [x] **A4 — Concorrência na Outbox**
+  Reserva por tempo (lease): `ClaimPendingAsync` grava `LockedUntil = now() + 30 s` num único `UPDATE ... WHERE Id IN (SELECT ... FOR UPDATE SKIP LOCKED) RETURNING *`; a publicação acontece fora da transação. Worker que morre libera a carta quando o lease vence. Testes com Postgres real (Testcontainers); ponta a ponta com 2 instâncias da API: antes 40 duplicatas em 40 cartas, depois 20/20 sem sobreposição.
 - [ ] **A5 — Retry com backoff e estado `Failed`**
   `Attempts`, `NextAttemptAt`, `LastError`; resolve o head-of-line blocking do lote de 20.
 - [ ] **A6 — Integration events vs. auditoria**
@@ -88,7 +88,10 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 |---|---|---|
 | Uma conexão RabbitMQ nova por mensagem publicada | `RabbitMqAuditEventPublisher` | junto de A5 |
 | Sem timeout para o ack do broker | `RabbitMqAuditEventPublisher` | junto de A5 |
-| Worker depende da classe concreta `OutboxRepository` (dificulta teste unitário) | `OutboxProcessorBackgroundService` | A4 |
+| Worker depende da classe concreta `OutboxRepository` (dificulta teste unitário) | `OutboxProcessorBackgroundService` | A5 (quando a lógica de tentativas justificar testes de unidade) |
+| Com vários Workers, a ordem global de publicação não é garantida | Outbox | A6 |
+| Lease de 30 s vale para o lote inteiro, mas o lote é publicado em sequência: se o tempo total do lote (até 20 publicações) passar do lease, a cauda é reservada por outro Worker e publicada em dobro (tolerado pelo at-least-once). Resolver junto com o timeout do ack (parar o lote ao se aproximar do fim do lease) | `OutboxProcessorBackgroundService` | A5 |
+| Cartas reservadas por uma instância que desliga (deploy) esperam até 30 s para voltar | `OutboxProcessorBackgroundService` | A5 |
 | `EventId` do Domain Event descartado; Outbox gera outro | `OutboxRepository.Add` | A6 |
 | `RetryPolicies.CreateMongoWritePolicy` sem uso; erro transitório (Mongo fora) ainda reentrega na hora, sem backoff | `AuditService.Infrastructure` | A5 |
 | Pacotes com vulnerabilidade conhecida: `SharpCompress`/`Snappier` (via MongoDB.Driver), `Microsoft.OpenApi` (Api) | AuditService | manutenção |
@@ -112,3 +115,6 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | DLX ligada por **policy**, não por `x-arguments` | policy muda sem redeploy e vale para a fila existente sem recriá-la (recomendação oficial do RabbitMQ) |
 | Policy local aplicada por **arquivo de definições** importado no boot | configuração do broker como código, reaplicada a cada boot; equivalente local de Topology Operator / Terraform. Custo: o usuário `dev` vai no arquivo (hash), pois o nó não cria o usuário padrão quando importa definições |
 | Testes do consumidor aplicam a policy com `rabbitmqctl set_policy` | o teste prova o comportamento do consumidor sem depender do `docker-compose` |
+| Concorrência da Outbox por **lease** (`LockedUntil`) + `FOR UPDATE SKIP LOCKED` | transação curta, sem segurar tranca durante a publicação; escala com N Workers. Rejeitados: tranca durante a publicação (transação longa) e advisory lock (um Worker por vez, não escala) |
+| Lease calculado com `now()` do Postgres | um único relógio para todas as instâncias; evita divergência entre servidores |
+| Migration aplicada **antes** do código novo (expand → deploy) | com `LockedUntil` mapeada, o `INSERT` da Outbox inclui a coluna; código novo em banco sem a migration falha ao criar/alterar usuário. A mudança é aditiva e nula, então o código antigo convive com o esquema novo |

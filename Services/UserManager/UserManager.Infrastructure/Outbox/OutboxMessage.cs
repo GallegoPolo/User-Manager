@@ -11,6 +11,7 @@
         public string PayloadJson { get; private set; } = string.Empty;
         public DateTime OccurredAt { get; private set; }
         public DateTime? ProcessedAt { get; private set; }
+        public DateTime? LockedUntil { get; private set; }
 
         public static OutboxMessage Create(string eventType, string aggregateId, string aggregateType, string payloadJson)
         {
