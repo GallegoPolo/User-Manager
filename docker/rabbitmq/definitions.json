@@ -1,0 +1,32 @@
+{
+  "users": [
+    {
+      "name": "dev",
+      "password_hash": "19kxnRipmd1/AluTQh9WwVrmVen8AUbXAeAe/nUXutmksNjG",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "permissions": [
+    {
+      "user": "dev",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "audit-events-dlx",
+      "pattern": "^audit_events$",
+      "apply-to": "queues",
+      "definition": { "dead-letter-exchange": "audit_exchange.dlx" },
+      "priority": 0
+    }
+  ]
+}

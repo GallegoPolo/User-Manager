@@ -32,8 +32,8 @@ public class AuditEventConsumer : BackgroundService
     {
         try
         {
-            await EstablishRabbitMqConnectionAsync(stoppingToken);
-            await StartConsumingEventsAsync(stoppingToken);
+            var channel = await EstablishRabbitMqConnectionAsync(stoppingToken);
+            await StartConsumingEventsAsync(channel, stoppingToken);
             await KeepServiceAliveAsync(stoppingToken);
         }
         catch (OperationCanceledException)
@@ -47,17 +47,22 @@ public class AuditEventConsumer : BackgroundService
         }
     }
 
-    private async Task EstablishRabbitMqConnectionAsync(CancellationToken ct)
+    private async Task<IChannel> EstablishRabbitMqConnectionAsync(CancellationToken ct)
     {
         var connectionFactory = CreateConnectionFactory();
 
-        _rabbitConnection = await connectionFactory.CreateConnectionAsync(ct);
-        _rabbitChannel = await _rabbitConnection.CreateChannelAsync(cancellationToken: ct);
+        var connection = await connectionFactory.CreateConnectionAsync(ct);
+        _rabbitConnection = connection;
 
-        await DeclareRabbitMqTopologyAsync(ct);
-        await ConfigureQualityOfServiceAsync(ct);
+        var channel = await connection.CreateChannelAsync(cancellationToken: ct);
+        _rabbitChannel = channel;
+
+        await DeclareRabbitMqTopologyAsync(channel, ct);
+        await ConfigureQualityOfServiceAsync(channel, ct);
 
         _logger.LogInformation("Conexão com RabbitMQ estabelecida com sucesso");
+
+        return channel;
     }
 
     private ConnectionFactory CreateConnectionFactory()
@@ -71,9 +76,15 @@ public class AuditEventConsumer : BackgroundService
         };
     }
 
-    private async Task DeclareRabbitMqTopologyAsync(CancellationToken ct)
+    private async Task DeclareRabbitMqTopologyAsync(IChannel channel, CancellationToken ct)
     {
-        await _rabbitChannel!.ExchangeDeclareAsync(
+        await DeclareMainQueueAsync(channel, ct);
+        await DeclareDeadLetterQueueAsync(channel, ct);
+    }
+
+    private async Task DeclareMainQueueAsync(IChannel channel, CancellationToken ct)
+    {
+        await channel.ExchangeDeclareAsync(
             exchange: _settings.ExchangeName,
             type: ExchangeType.Topic,
             durable: _settings.Durable,
@@ -81,7 +92,7 @@ public class AuditEventConsumer : BackgroundService
             arguments: null,
             cancellationToken: ct);
 
-        await _rabbitChannel.QueueDeclareAsync(
+        await channel.QueueDeclareAsync(
             queue: _settings.QueueName,
             durable: _settings.Durable,
             exclusive: false,
@@ -89,7 +100,7 @@ public class AuditEventConsumer : BackgroundService
             arguments: null,
             cancellationToken: ct);
 
-        await _rabbitChannel.QueueBindAsync(
+        await channel.QueueBindAsync(
             queue: _settings.QueueName,
             exchange: _settings.ExchangeName,
             routingKey: _settings.RoutingKey,
@@ -97,22 +108,48 @@ public class AuditEventConsumer : BackgroundService
             cancellationToken: ct);
     }
 
-    private async Task ConfigureQualityOfServiceAsync(CancellationToken ct)
+    private async Task DeclareDeadLetterQueueAsync(IChannel channel, CancellationToken ct)
     {
-        await _rabbitChannel!.BasicQosAsync(
+        await channel.ExchangeDeclareAsync(
+            exchange: _settings.DeadLetterExchangeName,
+            type: ExchangeType.Fanout,
+            durable: _settings.Durable,
+            autoDelete: false,
+            arguments: null,
+            cancellationToken: ct);
+
+        await channel.QueueDeclareAsync(
+            queue: _settings.DeadLetterQueueName,
+            durable: _settings.Durable,
+            exclusive: false,
+            autoDelete: false,
+            arguments: null,
+            cancellationToken: ct);
+
+        await channel.QueueBindAsync(
+            queue: _settings.DeadLetterQueueName,
+            exchange: _settings.DeadLetterExchangeName,
+            routingKey: string.Empty,
+            arguments: null,
+            cancellationToken: ct);
+    }
+
+    private async Task ConfigureQualityOfServiceAsync(IChannel channel, CancellationToken ct)
+    {
+        await channel.BasicQosAsync(
             prefetchSize: 0,
             prefetchCount: _settings.PrefetchCount,
             global: false,
             cancellationToken: ct);
     }
 
-    private async Task StartConsumingEventsAsync(CancellationToken stoppingToken)
+    private async Task StartConsumingEventsAsync(IChannel channel, CancellationToken stoppingToken)
     {
-        var eventConsumer = new AsyncEventingBasicConsumer(_rabbitChannel);
+        var eventConsumer = new AsyncEventingBasicConsumer(channel);
         eventConsumer.ReceivedAsync += (sender, deliveryArgs) =>
-            HandleEventReceivedAsync(deliveryArgs, stoppingToken);
+            HandleEventReceivedAsync(channel, deliveryArgs, stoppingToken);
 
-        await _rabbitChannel!.BasicConsumeAsync(
+        await channel.BasicConsumeAsync(
             queue: _settings.QueueName,
             autoAck: false,
             consumer: eventConsumer,
@@ -121,7 +158,7 @@ public class AuditEventConsumer : BackgroundService
         _logger.LogInformation("Consumidor iniciado. Aguardando eventos na fila: {QueueName}", _settings.QueueName);
     }
 
-    private async Task HandleEventReceivedAsync(BasicDeliverEventArgs deliveryArgs, CancellationToken ct)
+    private async Task HandleEventReceivedAsync(IChannel channel, BasicDeliverEventArgs deliveryArgs, CancellationToken ct)
     {
         try
         {
@@ -129,7 +166,7 @@ public class AuditEventConsumer : BackgroundService
 
             if (!parseResult.IsSuccess)
             {
-                await RejectInvalidEventAsync(deliveryArgs, parseResult.Error!, ct);
+                await RejectInvalidEventAsync(channel, deliveryArgs, parseResult.Error!, ct);
                 return;
             }
 
@@ -139,21 +176,21 @@ public class AuditEventConsumer : BackgroundService
             var auditLog = parseResult.Data!;
             var wasSaved = await repository.AddAsync(auditLog, ct);
 
-            await AcknowledgeEventAsync(deliveryArgs, auditLog, wasSaved, ct);
+            await AcknowledgeEventAsync(channel, deliveryArgs, auditLog, wasSaved, ct);
         }
         catch (Exception ex)
         {
-            await RequeueEventForRetryAsync(deliveryArgs, ex, ct);
+            await RequeueEventForRetryAsync(channel, deliveryArgs, ex, ct);
         }
     }
 
-    private async Task RejectInvalidEventAsync(BasicDeliverEventArgs deliveryArgs, string reason, CancellationToken ct)
+    private async Task RejectInvalidEventAsync(IChannel channel, BasicDeliverEventArgs deliveryArgs, string reason, CancellationToken ct)
     {
         _logger.LogError("Evento rejeitado sem nova tentativa (erro permanente). RoutingKey: {RoutingKey} | Motivo: {Reason}",
                          deliveryArgs.RoutingKey,
                          reason);
 
-        await _rabbitChannel!.BasicNackAsync(
+        await channel.BasicNackAsync(
             deliveryTag: deliveryArgs.DeliveryTag,
             multiple: false,
             requeue: false,
@@ -161,6 +198,7 @@ public class AuditEventConsumer : BackgroundService
     }
 
     private async Task AcknowledgeEventAsync(
+        IChannel channel,
         BasicDeliverEventArgs deliveryArgs,
         AuditLog auditLog,
         bool wasSaved,
@@ -180,20 +218,20 @@ public class AuditEventConsumer : BackgroundService
                 auditLog.EventId);
         }
 
-        await _rabbitChannel!.BasicAckAsync(
+        await channel.BasicAckAsync(
             deliveryTag: deliveryArgs.DeliveryTag,
             multiple: false,
             cancellationToken: ct);
     }
 
-    private async Task RequeueEventForRetryAsync(BasicDeliverEventArgs deliveryArgs, Exception ex, CancellationToken ct)
+    private async Task RequeueEventForRetryAsync(IChannel channel, BasicDeliverEventArgs deliveryArgs, Exception ex, CancellationToken ct)
     {
         _logger.LogError(
             ex,
             "Erro ao processar evento. DeliveryTag: {DeliveryTag}. Evento será reenfileirado",
             deliveryArgs.DeliveryTag);
 
-        await _rabbitChannel!.BasicNackAsync(
+        await channel.BasicNackAsync(
             deliveryTag: deliveryArgs.DeliveryTag,
             multiple: false,
             requeue: true,

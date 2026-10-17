@@ -15,7 +15,7 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 | Por que não usamos exactly-once? | A1 | ✅ |
 | Como evitamos duplicação? | índice único em `eventId` (AuditService), A3 | 🟡 |
 | Uma falha no worker derruba a API? | A2 | ✅ |
-| O que acontece com uma mensagem inválida? | A3 | ⏳ |
+| O que acontece com uma mensagem inválida? | A3 | ✅ |
 | Dois workers pegam a mesma mensagem? Como escalar os workers? | A4 | ⏳ |
 | Como evitar retry infinito? | A5 | ⏳ |
 | Por que o domínio não conhece o RabbitMQ? | A6 | 🟡 |
@@ -36,7 +36,7 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 ## Ordem escolhida (intercalada)
 
 ```text
-A1 ✅ → A2 ✅ → A3 → A4 → D1 → C → A5 → A6 → B → D2 → E
+A1 ✅ → A2 ✅ → A3 ✅ → A4 → D1 → C → A5 → A6 → B → D2 → E
 ```
 
 Por quê:
@@ -53,9 +53,9 @@ Por quê:
   Publisher confirms com tracking, mensagem persistente e `mandatory`. A Outbox só marca `ProcessedAt` após o ack do broker; sem fila ligada, o evento fica retido em vez de ser descartado.
 - [x] **A2 — Worker resiliente** (`e585e59`)
   Falha num ciclo da Outbox é logada e tentada de novo; não derruba mais o host da API. Cancelamento por shutdown é tratado como desligamento gracioso.
-- [ ] **A3 — Consumidor: erro transitório vs. permanente**
-  - [x] **A3.1 — Classificação da mensagem**: `AuditEventMessageParser` devolve `Result<AuditLog>` (sem exceção para entrada inválida); `EventId` obrigatório (`required`); inválida → `nack(requeue: false)`.
-  - [ ] **A3.2 — Dead Letter Queue** via policy (`dead-letter-exchange`), para a mensagem inválida ir para quarentena em vez de ser descartada.
+- [x] **A3 — Consumidor: erro transitório vs. permanente**
+  - [x] **A3.1 — Classificação da mensagem** (`2ec3ceb`): `AuditEventMessageParser` devolve `Result<AuditLog>` (sem exceção para entrada inválida); `EventId` obrigatório (`required`); inválida → `nack(requeue: false)`.
+  - [x] **A3.2 — Dead Letter Queue**: o consumidor declara `audit_exchange.dlx` (fanout) e `audit_events.dead-letter`; a policy `audit-events-dlx` (`^audit_events$` → `dead-letter-exchange`) liga a fila principal à DLX. Localmente a policy vem de `docker/rabbitmq/definitions.json`, importado no boot. Inválida → quarentena com `x-death` (`reason: rejected`); erro transitório continua voltando para a fila. Testes de integração com Testcontainers.
 - [ ] **A4 — Concorrência na Outbox**
   Claim com `FOR UPDATE SKIP LOCKED` para vários workers não publicarem a mesma mensagem.
 - [ ] **A5 — Retry com backoff e estado `Failed`**
@@ -92,7 +92,8 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | `EventId` do Domain Event descartado; Outbox gera outro | `OutboxRepository.Add` | A6 |
 | `RetryPolicies.CreateMongoWritePolicy` sem uso; erro transitório (Mongo fora) ainda reentrega na hora, sem backoff | `AuditService.Infrastructure` | A5 |
 | Pacotes com vulnerabilidade conhecida: `SharpCompress`/`Snappier` (via MongoDB.Driver), `Microsoft.OpenApi` (Api) | AuditService | manutenção |
-| Warning CS8604 (`_rabbitChannel` possivelmente nulo) | `AuditEventConsumer` | A3.2 |
+| Nome da DLX duplicado entre `RabbitMqSettings` e a policy do `definitions.json` (se divergirem, a mensagem volta a ser descartada em silêncio) | AuditService / `docker/rabbitmq` | A6 |
+| DLQ sem reprocessamento (replay) e sem alerta de tamanho | AuditService | D2 (alerta); replay quando houver necessidade |
 | Classes `UserCreatedEvent`, `AdminLoggedInEvent` etc. sem uso | `AuditEventBase.cs` | A6 |
 | Warnings CS8618 (construtor do EF deixa `Name`/`Email` nulos) | `User.cs` | C |
 | Vulnerabilidades em dependências de dev do frontend (`npm audit`) | `frontend` | E |
@@ -108,3 +109,6 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Outbox implementada à mão, não MassTransit/NServiceBus | objetivo de aprendizado; MassTransit v9 é comercial. Comparar com um framework ao final é um estudo opcional |
 | Worker da Outbox continua no processo da API | isolar em processo próprio é válido, mas grande demais por enquanto |
 | Testes de infraestrutura com Testcontainers (RabbitMQ real) | mock não reproduz `basic.return` nem ack de broker |
+| DLX ligada por **policy**, não por `x-arguments` | policy muda sem redeploy e vale para a fila existente sem recriá-la (recomendação oficial do RabbitMQ) |
+| Policy local aplicada por **arquivo de definições** importado no boot | configuração do broker como código, reaplicada a cada boot; equivalente local de Topology Operator / Terraform. Custo: o usuário `dev` vai no arquivo (hash), pois o nó não cria o usuário padrão quando importa definições |
+| Testes do consumidor aplicam a policy com `rabbitmqctl set_policy` | o teste prova o comportamento do consumidor sem depender do `docker-compose` |

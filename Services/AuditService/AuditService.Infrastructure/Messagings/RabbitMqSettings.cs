@@ -9,6 +9,8 @@
         public string QueueName { get; set; } = "audit_events";
         public string ExchangeName { get; set; } = "audit_exchange";
         public string RoutingKey { get; set; } = "audit.#";
+        public string DeadLetterExchangeName { get; set; } = "audit_exchange.dlx";
+        public string DeadLetterQueueName { get; set; } = "audit_events.dead-letter";
         public bool Durable { get; set; } = true;
         public ushort PrefetchCount { get; set; } = 10;
     }
