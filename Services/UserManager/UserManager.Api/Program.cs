@@ -22,6 +22,7 @@ builder.Services
        .AddPersistence(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.AddObservability();
 
 var app = builder.Build();
 

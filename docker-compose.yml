@@ -59,6 +59,17 @@ services:
       timeout: 5s
       retries: 5
 
+  observability:
+    image: grafana/otel-lgtm:0.35.0
+    container_name: user-manager-observability
+    ports:
+      - "3000:3000"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - lgtmdata:/data
+
 volumes:
   pgdata:
   mongodata:
+  lgtmdata:

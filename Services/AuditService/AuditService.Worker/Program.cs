@@ -2,6 +2,7 @@ using AuditService.Domain.Interfaces.Repositories;
 using AuditService.Infrastructure.Messagings;
 using AuditService.Infrastructure.Persistences;
 using AuditService.Infrastructure.Repositories;
+using AuditService.Worker;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -15,6 +16,8 @@ builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
 builder.Services.AddHostedService<AuditEventConsumer>();
+
+builder.AddObservability();
 
 var host = builder.Build();
 host.Run();

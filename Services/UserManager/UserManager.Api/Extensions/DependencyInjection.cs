@@ -13,6 +13,8 @@ using UserManager.Infrastructure.Persistence;
 using UserManager.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
@@ -50,9 +52,15 @@ namespace UserManager.Api.Extensions
         public static IServiceCollection AddPersistence(this IServiceCollection services, ConfigurationManager configuration)
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
-            services.AddDbContext<UserManagerDbContext>(options => options.UseNpgsql(connectionString));
+            services.AddDbContext<UserManagerDbContext>(options =>
+                options.UseNpgsql(connectionString, npgsql => npgsql.ConfigureDataSource(TraceOnlyCommandsInsideATrace)));
 
             return services;
+        }
+
+        private static void TraceOnlyCommandsInsideATrace(NpgsqlDataSourceBuilder dataSource)
+        {
+            dataSource.ConfigureTracing(tracing => tracing.ConfigureCommandFilter(_ => Activity.Current is not null));
         }
 
         public static IServiceCollection AddMessaging(this IServiceCollection services, ConfigurationManager configuration)
