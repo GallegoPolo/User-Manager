@@ -11,16 +11,20 @@ using RabbitMQ.Client.Exceptions;
 
 namespace AuditService.Infrastructure.IntegrationTests.Messagings;
 
-public sealed class AuditEventConsumerDeadLetterTests : IClassFixture<RabbitMqFixture>
+public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
 {
     private const string RoutingKey = "audit.user.created";
+    private const string RabbitMqSubscriberSourceName = "RabbitMQ.Client.Subscriber";
+    private const string TraceParentHeader = "traceparent";
+    private const string PublisherTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+    private const string PublisherSpanId = "00f067aa0ba902b7";
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
 
     private readonly RabbitMqFixture _rabbitMq;
     private readonly RabbitMqSettings _settings;
 
-    public AuditEventConsumerDeadLetterTests(RabbitMqFixture rabbitMq)
+    public AuditEventConsumerTests(RabbitMqFixture rabbitMq)
     {
         _rabbitMq = rabbitMq;
         _settings = rabbitMq.CreateSettings();
@@ -53,6 +57,30 @@ public sealed class AuditEventConsumerDeadLetterTests : IClassFixture<RabbitMqFi
     }
 
     [Fact]
+    public async Task InvalidMessage_KeepsTraceParentInDeadLetterQueue()
+    {
+        // Arrange
+        var traceParent = $"00-{PublisherTraceId}-{PublisherSpanId}-01";
+        var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 0);
+        await using var services = BuildServices(repository);
+        using var consumer = CreateConsumer(services);
+
+        await consumer.StartAsync(CancellationToken.None);
+        await WaitUntilConsumingAsync();
+
+        // Act
+        await PublishAsync(Encoding.UTF8.GetBytes("isto não é json"), traceParent);
+
+        // Assert
+        var deadLettered = await WaitForDeadLetteredMessageAsync();
+        var headers = Assert.IsAssignableFrom<IDictionary<string, object?>>(deadLettered.BasicProperties.Headers);
+
+        Assert.Equal(traceParent, ReadString(headers, TraceParentHeader));
+
+        await consumer.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
     public async Task TransientFailure_IsRequeuedAndNotDeadLettered()
     {
         // Arrange
@@ -71,6 +99,30 @@ public sealed class AuditEventConsumerDeadLetterTests : IClassFixture<RabbitMqFi
 
         Assert.Equal(2, repository.AddCallCount);
         Assert.Equal(0u, await CountMessagesAsync(_settings.DeadLetterQueueName));
+
+        await consumer.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ValidMessage_IsProcessedInsidePublisherTrace()
+    {
+        // Arrange
+        using var listener = new ActivitySourceListener(RabbitMqSubscriberSourceName);
+
+        var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 0);
+        await using var services = BuildServices(repository);
+        using var consumer = CreateConsumer(services);
+
+        await consumer.StartAsync(CancellationToken.None);
+        await WaitUntilConsumingAsync();
+
+        // Act
+        await PublishAsync(ValidMessageBody(), traceParent: $"00-{PublisherTraceId}-{PublisherSpanId}-01");
+
+        // Assert
+        await repository.WaitForAddCallsAsync(count: 1, WaitTimeout);
+
+        Assert.Equal(PublisherTraceId, repository.LastTraceId);
 
         await consumer.StopAsync(CancellationToken.None);
     }
@@ -109,6 +161,15 @@ public sealed class AuditEventConsumerDeadLetterTests : IClassFixture<RabbitMqFi
         await using var channel = await connection.CreateChannelAsync();
 
         await channel.BasicPublishAsync(_settings.ExchangeName, RoutingKey, body);
+    }
+
+    private async Task PublishAsync(byte[] body, string traceParent)
+    {
+        await using var connection = await _rabbitMq.CreateConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync();
+
+        var properties = new BasicProperties { Headers = new Dictionary<string, object?> { [TraceParentHeader] = traceParent } };
+        await channel.BasicPublishAsync(_settings.ExchangeName, RoutingKey, mandatory: false, properties, body);
     }
 
     private async Task WaitUntilConsumingAsync()

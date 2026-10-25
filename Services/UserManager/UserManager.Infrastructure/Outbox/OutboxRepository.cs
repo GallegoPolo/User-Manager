@@ -1,4 +1,5 @@
-﻿using UserManager.Application.Outbox.Interfaces;
+﻿using System.Diagnostics;
+using UserManager.Application.Outbox.Interfaces;
 using UserManager.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,8 +16,13 @@ namespace UserManager.Infrastructure.Outbox
 
         public void Add(string eventType, string aggregateId, string aggregateType, string payloadJson)
         {
-            var message = OutboxMessage.Create(eventType, aggregateId, aggregateType, payloadJson);
-            _context.Set<OutboxMessage>().Add(message); 
+            var message = OutboxMessage.Create(eventType, aggregateId, aggregateType, payloadJson, CurrentW3CTraceParent());
+            _context.Set<OutboxMessage>().Add(message);
+        }
+
+        private static string? CurrentW3CTraceParent()
+        {
+            return Activity.Current is { IdFormat: ActivityIdFormat.W3C } activity ? activity.Id : null;
         }
 
         public async Task<List<OutboxMessage>> ClaimPendingAsync(int batchSize, TimeSpan leaseDuration, CancellationToken cancellationToken)

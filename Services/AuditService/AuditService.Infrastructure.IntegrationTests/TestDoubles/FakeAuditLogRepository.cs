@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AuditService.Domain.Entities;
 using AuditService.Domain.Enums;
 using AuditService.Domain.Interfaces.Repositories;
@@ -16,8 +17,11 @@ public sealed class FakeAuditLogRepository : IAuditLogRepository
 
     public int AddCallCount => Volatile.Read(ref _addCallCount);
 
+    public string? LastTraceId { get; private set; }
+
     public Task<bool> AddAsync(AuditLog auditLog, CancellationToken cancellationToken = default)
     {
+        LastTraceId = Activity.Current?.TraceId.ToString();
         var callNumber = Interlocked.Increment(ref _addCallCount);
 
         if (callNumber <= _failuresBeforeSuccess)

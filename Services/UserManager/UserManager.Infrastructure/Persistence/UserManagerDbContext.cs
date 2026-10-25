@@ -31,6 +31,7 @@ namespace UserManager.Infrastructure.Persistence
                 entity.Property(m => m.AggregateId).IsRequired().HasMaxLength(100);
                 entity.Property(m => m.AggregateType).IsRequired().HasMaxLength(100);
                 entity.Property(m => m.PayloadJson).IsRequired();
+                entity.Property(m => m.TraceParent).HasMaxLength(55);
                 entity.HasIndex(m => m.ProcessedAt); // Filtrar mais a query para processar
             });
         }

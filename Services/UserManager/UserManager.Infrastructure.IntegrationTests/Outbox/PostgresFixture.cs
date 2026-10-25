@@ -18,10 +18,12 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public Task DisposeAsync() => _container.DisposeAsync().AsTask();
 
+    public string ConnectionString => _container.GetConnectionString();
+
     public UserManagerDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<UserManagerDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
+            .UseNpgsql(ConnectionString)
             .Options;
 
         return new UserManagerDbContext(options);

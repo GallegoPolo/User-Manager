@@ -83,6 +83,10 @@ namespace UserManager.Infrastructure.Migrations
                     b.Property<DateTime?>("ProcessedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("TraceParent")
+                        .HasMaxLength(55)
+                        .HasColumnType("character varying(55)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProcessedAt");

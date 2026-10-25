@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
+using UserManager.Infrastructure.IntegrationTests.TestDoubles;
 using UserManager.Infrastructure.Messaging;
 
 namespace UserManager.Infrastructure.IntegrationTests.Messaging;
@@ -11,6 +13,8 @@ public sealed class RabbitMqAuditEventPublisherTests : IClassFixture<RabbitMqFix
 {
     private const string AuditRoutingPattern = "audit.#";
     private const ushort NoRouteReplyCode = 312;
+    private const string RabbitMqPublisherSourceName = "RabbitMQ.Client.Publisher";
+    private const string TraceParentHeader = "traceparent";
 
     private readonly RabbitMqFixture _rabbitMq;
 
@@ -54,6 +58,32 @@ public sealed class RabbitMqAuditEventPublisherTests : IClassFixture<RabbitMqFix
         Assert.NotNull(delivered);
         Assert.True(delivered.BasicProperties.Persistent);
         Assert.Contains(eventId.ToString(), Encoding.UTF8.GetString(delivered.Body.Span));
+    }
+
+    [Fact]
+    public async Task PublishAsync_InsideActiveTrace_AddsTraceParentHeader()
+    {
+        // Arrange
+        using var listener = new ActivitySourceListener(RabbitMqPublisherSourceName);
+        var exchangeName = UniqueName("exchange");
+        var queueName = UniqueName("queue");
+        await DeclareBoundQueueAsync(exchangeName, queueName);
+
+        var publisher = CreatePublisher(exchangeName);
+        using var outboxPublish = new Activity("outbox publish").SetIdFormat(ActivityIdFormat.W3C).Start();
+
+        // Act
+        await PublishSampleEventAsync(publisher, Guid.NewGuid());
+
+        // Assert
+        await using var connection = await _rabbitMq.CreateConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync();
+        var delivered = await channel.BasicGetAsync(queueName, autoAck: true);
+
+        Assert.NotNull(delivered);
+        var headers = Assert.IsAssignableFrom<IDictionary<string, object?>>(delivered.BasicProperties.Headers);
+        var traceParent = Encoding.UTF8.GetString(Assert.IsType<byte[]>(headers[TraceParentHeader]));
+        Assert.Equal(outboxPublish.TraceId, ActivityContext.Parse(traceParent, traceState: null).TraceId);
     }
 
     private RabbitMqAuditEventPublisher CreatePublisher(string exchangeName)

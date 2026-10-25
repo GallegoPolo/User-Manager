@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using UserManager.Application.Events.Interfaces;
@@ -52,6 +53,8 @@ public class OutboxProcessorBackgroundService : BackgroundService
 
         foreach (var message in claimedMessages)
         {
+            using var publishActivity = OutboxTelemetry.StartPublishActivity(message);
+
             try
             {
                 await publisher.PublishAsync(eventId: message.Id,
@@ -69,6 +72,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
             {
                 // Não marca como processada, tenta de novo no próximo ciclo.
                 // TODO: (poison message), não implementado agora.
+                publishActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 _logger.LogWarning(ex, "Falha ao publicar mensagem da Outbox {MessageId}. Será retentada.", message.Id);
             }
         }

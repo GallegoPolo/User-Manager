@@ -12,8 +12,9 @@
         public DateTime OccurredAt { get; private set; }
         public DateTime? ProcessedAt { get; private set; }
         public DateTime? LockedUntil { get; private set; }
+        public string? TraceParent { get; private set; }
 
-        public static OutboxMessage Create(string eventType, string aggregateId, string aggregateType, string payloadJson)
+        public static OutboxMessage Create(string eventType, string aggregateId, string aggregateType, string payloadJson, string? traceParent)
         {
             return new OutboxMessage
             {
@@ -22,7 +23,8 @@
                 AggregateId = aggregateId,
                 AggregateType = aggregateType,
                 PayloadJson = payloadJson,
-                OccurredAt = DateTime.UtcNow
+                OccurredAt = DateTime.UtcNow,
+                TraceParent = traceParent
             };
         }
 

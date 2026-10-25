@@ -19,7 +19,7 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 | Dois workers pegam a mesma mensagem? Como escalar os workers? | A4 | ✅ |
 | Como evitar retry infinito? | A5 | ⏳ |
 | Por que o domínio não conhece o RabbitMQ? | A6 | 🟡 |
-| Como rastrear uma requisição entre vários microsserviços? | D1, D2 | ⏳ |
+| Como rastrear uma requisição entre vários microsserviços? | D | ✅ |
 | Por que o UserManager não usa o Keycloak diretamente? | B | ⏳ |
 | Como funciona o JIT provisioning idempotente? | B | ⏳ |
 
@@ -36,12 +36,12 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 ## Ordem escolhida (intercalada)
 
 ```text
-A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D1 → C → A5 → A6 → B → D2 → E
+A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D ✅ → C → A5 → A6 → B → E
 ```
 
 Por quê:
 - **A3 e A4 primeiro**: fecham os buracos que perdem mensagens ou entram em loop (consumidor) e o que impede escalar (concorrência).
-- **D1 antes do domínio**: depurar mensageria sem correlation ID é sofrido.
+- **D antes do domínio**: depurar mensageria sem correlation ID é sofrido. D1 (correlation ID) e D2 (OpenTelemetry) foram feitos juntos, por escolha, porque o OpenTelemetry já usa o mesmo mecanismo (W3C `traceparent`).
 - **C antes de B**: o domínio de contatos pode ser construído com a autenticação atual; trocar a identidade depois é uma mudança de borda (isolada por `ICurrentUser`).
 - **A5 e A6 depois de C**: o domínio novo vai gerar eventos novos (`ContactCreated`...), que justificam backoff e a separação entre integration events e auditoria.
 
@@ -65,8 +65,9 @@ Por quê:
 
 ### Frente D — Observabilidade
 
-- [ ] **D1 — Correlation ID e logs estruturados** (HTTP → Outbox → RabbitMQ → AuditService)
-- [ ] **D2 — OpenTelemetry** (traces e métricas)
+- [x] **D — Observabilidade com OpenTelemetry** (D1 + D2)
+  - **Base** (`5e468a6`): OpenTelemetry na `UserManager.Api` e no `AuditService.Worker` (traces, logs estruturados e métricas HTTP) exportando OTLP para `grafana/otel-lgtm` (Grafana, Tempo, Loki, Prometheus) no compose. Npgsql só rastreia comandos dentro de um trace (sem ruído do poller da Outbox).
+  - **Propagação**: `TraceParent` gravado na Outbox durante a requisição; o Worker abre `outbox publish` como filho dela; o `RabbitMQ.Client` injeta `traceparent` no cabeçalho e o consumidor continua o mesmo trace. Ponta a ponta: um `POST /api/users` vira um único trace até o `deliver` no AuditService, com logs dos dois serviços ligados a ele.
 
 ### Frente C — Domínio
 
@@ -103,6 +104,14 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Tabela da Outbox cresce sem limpeza; índice em `ProcessedAt` poderia ser parcial | `OutboxMessages` | A5 |
 | RabbitMQ local é 3.13 (`rabbitmq:3-management`); 4.x muda padrões de quorum queues (delivery-limit 20) | `docker-compose.yml` | avaliar em A5 |
 | Seção "Rodar" do CLAUDE.md e passo a passo de ambiente zerado | docs | quando conveniente |
+| MongoDB sem spans (driver 3.6 sem suporte nativo a OpenTelemetry) | AuditService | quando o driver suportar |
+| `AuditService.Api` e `AuthService` sem OpenTelemetry | AuditService.Api, AuthService | B |
+| Worker do AuditService sem métricas (`AddMeter("System.Runtime")`, sem pacote) | `AuditService.Worker` | quando conveniente |
+| Portas do Grafana/OTLP abertas em todas as interfaces, com Grafana anônima (admin) | `docker-compose.yml` | quando conveniente (`127.0.0.1:`) |
+| Traces de ruído do Swagger e de `OPTIONS` (CORS) | `UserManager.Api` | quando conveniente (filtro na instrumentação) |
+| Endpoint OTLP implícito (`localhost:4317`); em containers precisará de `OTEL_EXPORTER_OTLP_ENDPOINT` | hosts | quando os serviços forem para containers |
+| Trace não amostrado (`traceparent ...-00`): o RabbitMQ.Client não injeta o cabeçalho e o AuditService abre um trace órfão | Outbox / RabbitMQ | quando houver sampling (sampler consistente nos dois serviços) |
+| Carta que falha para sempre acrescenta um span de erro ao trace original a cada 5 s (trace pode ficar grande demais no Tempo) | `OutboxProcessorBackgroundService` | A5 (limitar tentativas resolve; avaliar link em vez de pai nas retentativas) |
 
 ## Decisões registradas
 
@@ -117,4 +126,9 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Testes do consumidor aplicam a policy com `rabbitmqctl set_policy` | o teste prova o comportamento do consumidor sem depender do `docker-compose` |
 | Concorrência da Outbox por **lease** (`LockedUntil`) + `FOR UPDATE SKIP LOCKED` | transação curta, sem segurar tranca durante a publicação; escala com N Workers. Rejeitados: tranca durante a publicação (transação longa) e advisory lock (um Worker por vez, não escala) |
 | Lease calculado com `now()` do Postgres | um único relógio para todas as instâncias; evita divergência entre servidores |
-| Migration aplicada **antes** do código novo (expand → deploy) | com `LockedUntil` mapeada, o `INSERT` da Outbox inclui a coluna; código novo em banco sem a migration falha ao criar/alterar usuário. A mudança é aditiva e nula, então o código antigo convive com o esquema novo |
+| Migration aplicada **antes** do código novo (expand → deploy) | com `LockedUntil` (A4) e `TraceParent` (D) mapeadas, o `INSERT` e o claim (`RETURNING *`) da Outbox incluem as colunas; código novo em banco sem a migration falha ao criar/alterar usuário. A mudança é aditiva e nula, então o código antigo convive com o esquema novo |
+| Observabilidade com **OpenTelemetry + OTLP** | padrão aberto (CNCF); o backend é trocável sem mudar código (Grafana local hoje; Grafana Cloud, Datadog etc. depois) |
+| Backend local `grafana/otel-lgtm` com volume | gratuito, ecossistema usado no mercado (Tempo, Loki, Prometheus, Grafana) e persiste dados; a própria Grafana declara a imagem como de dev/demo |
+| Sem pacotes prerelease (`RabbitMQ.Client.OpenTelemetry`) e sem pacotes desnecessários (`Npgsql.OpenTelemetry`) | `RabbitMQ.Client` 7.2 e Npgsql 10 já têm `ActivitySource` embutido; basta `AddSource` |
+| `traceparent` persistido na Outbox (`TraceParent`, só formato W3C) | a publicação acontece fora da requisição; sem isso o trace se perde no Worker |
+| Consumidor continua o trace do produtor (pai, não só link) | é o padrão do `RabbitMQ.Client` 7.2 (`UsePublisherAsParent = true`); travado por teste de caracterização |
