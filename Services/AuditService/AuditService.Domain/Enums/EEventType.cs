@@ -10,6 +10,9 @@
         ApiKeyCreated,
         ApiKeyRevoked,
         ApiKeyValidated,
-        AuditLogQueried
+        AuditLogQueried,
+        ContactCreated,
+        ContactUpdated,
+        ContactDeleted
     }
 }

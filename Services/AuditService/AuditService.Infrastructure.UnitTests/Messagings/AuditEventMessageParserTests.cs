@@ -97,6 +97,25 @@ public sealed class AuditEventMessageParserTests
     }
 
     [Theory]
+    [InlineData("contact.created", EEventType.ContactCreated)]
+    [InlineData("contact.updated", EEventType.ContactUpdated)]
+    [InlineData("contact.deleted", EEventType.ContactDeleted)]
+    public void Parse_WhenEventTypeIsContactEvent_MapsToEventType(string eventType, EEventType expected)
+    {
+        // Arrange
+        var message = ValidMessage();
+        message["eventType"] = eventType;
+        message["aggregateType"] = "Contact";
+
+        // Act
+        var result = AuditEventMessageParser.Parse(ToBody(message));
+
+        // Assert
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal(expected, result.Data!.EventType);
+    }
+
+    [Theory]
     [InlineData("aggregateId")]
     [InlineData("aggregateType")]
     [InlineData("performedBy")]

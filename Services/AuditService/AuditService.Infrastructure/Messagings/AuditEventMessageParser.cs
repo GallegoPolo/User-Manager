@@ -22,7 +22,10 @@ public static class AuditEventMessageParser
         ["admin.logged_in"] = EEventType.AdminLoggedIn,
         ["admin.created"] = EEventType.AdminCreated,
         ["api_key.created"] = EEventType.ApiKeyCreated,
-        ["api_key.revoked"] = EEventType.ApiKeyRevoked
+        ["api_key.revoked"] = EEventType.ApiKeyRevoked,
+        ["contact.created"] = EEventType.ContactCreated,
+        ["contact.updated"] = EEventType.ContactUpdated,
+        ["contact.deleted"] = EEventType.ContactDeleted
     };
 
     public static Result<AuditLog> Parse(ReadOnlyMemory<byte> body)

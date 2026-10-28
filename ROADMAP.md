@@ -72,6 +72,11 @@ Por quê:
 ### Frente C — Domínio
 
 - [ ] **C — Contatos** (`Contact` pertencente ao `User`; regras e eventos de domínio)
+  - [x] **C1 — AuditService conhece `contact.*`** (consumidor primeiro): `EEventType` e `KnownEventTypes` ganham `contact.created/updated/deleted`, para os eventos novos não caírem na DLQ.
+  - [ ] **C2 — Domínio**: Value Objects `Email` e `PhoneNumber`, agregado `Contact` (independente, com `OwnerId`) e eventos.
+  - [ ] **C3 — Criar e listar** (`Result` com tipo, tabela `Contacts`, rotas `/api/users/{userId}/contacts`, auditoria).
+  - [ ] **C4 — Detalhar, alterar, excluir**.
+  - [ ] **C5 — `User` usa o Value Object `Email`**.
 
 ### Frente B — Identidade
 
