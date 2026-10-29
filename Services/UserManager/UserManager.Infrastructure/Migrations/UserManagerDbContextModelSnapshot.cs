@@ -22,6 +22,39 @@ namespace UserManager.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("UserManager.Domain.Entities.Contact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "Email")
+                        .IsUnique();
+
+                    b.ToTable("Contacts", (string)null);
+                });
+
             modelBuilder.Entity("UserManager.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -92,6 +125,15 @@ namespace UserManager.Infrastructure.Migrations
                     b.HasIndex("ProcessedAt");
 
                     b.ToTable("OutboxMessages", (string)null);
+                });
+
+            modelBuilder.Entity("UserManager.Domain.Entities.Contact", b =>
+                {
+                    b.HasOne("UserManager.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

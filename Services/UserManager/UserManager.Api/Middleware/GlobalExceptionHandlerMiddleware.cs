@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
@@ -139,14 +140,12 @@ namespace UserManager.Api.Middleware
 
         private static bool IsUniqueConstraintViolation(DbUpdateException ex)
         {
-            var message = ex.InnerException?.Message ?? string.Empty;
-            return message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) || message.Contains("UNIQUE constraint", StringComparison.OrdinalIgnoreCase);
+            return ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
         }
 
         private static bool IsForeignKeyConstraintViolation(DbUpdateException ex)
         {
-            var message = ex.InnerException?.Message ?? string.Empty;
-            return message.Contains("foreign key", StringComparison.OrdinalIgnoreCase) ||  message.Contains("FOREIGN KEY constraint", StringComparison.OrdinalIgnoreCase);
+            return ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation };
         }
 
         private static ErrorResponse MapGenericException(Exception ex, IHostEnvironment env)

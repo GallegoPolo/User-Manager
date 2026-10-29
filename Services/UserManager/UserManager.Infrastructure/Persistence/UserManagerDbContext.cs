@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UserManager.Domain.Entities;
+using UserManager.Domain.ValueObjects;
 using UserManager.Infrastructure.Outbox;
 
 namespace UserManager.Infrastructure.Persistence
@@ -9,6 +10,7 @@ namespace UserManager.Infrastructure.Persistence
         public UserManagerDbContext(DbContextOptions<UserManagerDbContext> options) : base(options) { }
 
         public DbSet<User> Users => Set<User>();
+        public DbSet<Contact> Contacts => Set<Contact>();
         public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -21,6 +23,22 @@ namespace UserManager.Infrastructure.Persistence
                 entity.Property(u => u.Email).IsRequired().HasMaxLength(User.MAX_EMAIL_LENGTH);
                 entity.HasIndex(u => u.Email).IsUnique();
                 entity.Ignore(u => u.DomainEvents);
+            });
+
+            modelBuilder.Entity<Contact>(entity =>
+            {
+                entity.ToTable("Contacts");
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.Name).IsRequired().HasMaxLength(Contact.MaxNameLength);
+                entity.Property(c => c.Email)
+                    .HasMaxLength(Email.MaxLength)
+                    .HasConversion(email => email!.Value, value => Email.Create(value));
+                entity.Property(c => c.Phone)
+                    .HasMaxLength(PhoneNumber.MaxLength)
+                    .HasConversion(phone => phone!.Value, value => PhoneNumber.Create(value));
+                entity.HasIndex(c => new { c.OwnerId, c.Email }).IsUnique();
+                entity.HasOne<User>().WithMany().HasForeignKey(c => c.OwnerId).OnDelete(DeleteBehavior.Cascade);
+                entity.Ignore(c => c.DomainEvents);
             });
 
             modelBuilder.Entity<OutboxMessage>(entity =>

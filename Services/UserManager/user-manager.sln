@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UserManager.Infrastructure.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UserManager.Domain.UnitTests", "UserManager.Domain.UnitTests\UserManager.Domain.UnitTests.csproj", "{8BE7813D-345A-4351-8C7E-3F68AFCAADF8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UserManager.Application.UnitTests", "UserManager.Application.UnitTests\UserManager.Application.UnitTests.csproj", "{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{8BE7813D-345A-4351-8C7E-3F68AFCAADF8}.Release|x64.Build.0 = Release|Any CPU
 		{8BE7813D-345A-4351-8C7E-3F68AFCAADF8}.Release|x86.ActiveCfg = Release|Any CPU
 		{8BE7813D-345A-4351-8C7E-3F68AFCAADF8}.Release|x86.Build.0 = Release|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Debug|x64.Build.0 = Debug|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Debug|x86.Build.0 = Debug|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Release|x64.ActiveCfg = Release|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Release|x64.Build.0 = Release|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Release|x86.ActiveCfg = Release|Any CPU
+		{76CA580D-9FB2-433C-8AF7-C5E5746EB5FB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

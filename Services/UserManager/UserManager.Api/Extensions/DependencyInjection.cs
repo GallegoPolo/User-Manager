@@ -41,6 +41,7 @@ namespace UserManager.Api.Extensions
         public static IServiceCollection AddInfrastructure(this IServiceCollection services)
         {
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IContactRepository, ContactRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IOutboxRepository, OutboxRepository>();
             services.AddScoped<OutboxRepository>();

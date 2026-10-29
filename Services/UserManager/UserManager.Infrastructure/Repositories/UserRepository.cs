@@ -35,6 +35,11 @@ namespace UserManager.Infrastructure.Repositories
             return await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return _context.Users.AnyAsync(u => u.Id == id, cancellationToken);
+        }
+
         public async Task<IEnumerable<User>> GetAllAsync()
         {
             return await _context.Users.ToListAsync();
