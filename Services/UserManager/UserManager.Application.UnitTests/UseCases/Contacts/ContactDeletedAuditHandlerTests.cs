@@ -1,4 +1,3 @@
-using System.Text.Json;
 using UserManager.Application.Events;
 using UserManager.Application.UnitTests.Fakes;
 using UserManager.Application.UseCases.Contacts.EventHandlers;
@@ -9,23 +8,24 @@ namespace UserManager.Application.UnitTests.UseCases.Contacts;
 public sealed class ContactDeletedAuditHandlerTests
 {
     [Fact]
-    public async Task Handle_AddsContactDeletedMessageToOutbox()
+    public async Task Handle_PublishesContactDeletedAuditEvent()
     {
         // Arrange
-        var outbox = new FakeOutboxRepository();
+        var publisher = new FakeAuditEventPublisher();
         var domainEvent = new ContactDeletedDomainEvent(Guid.NewGuid(), Guid.NewGuid(), "Ana", "ana@example.com", null);
         var notification = new DomainEventNotification<ContactDeletedDomainEvent>(domainEvent);
 
         // Act
-        await new ContactDeletedAuditHandler(outbox).Handle(notification, CancellationToken.None);
+        await new ContactDeletedAuditHandler(publisher).Handle(notification, CancellationToken.None);
 
         // Assert
-        var entry = Assert.Single(outbox.Entries);
-        Assert.Equal("contact.deleted", entry.EventType);
-        Assert.Equal(domainEvent.ContactId.ToString(), entry.AggregateId);
-        Assert.Equal("Contact", entry.AggregateType);
-
-        var payload = JsonSerializer.Deserialize<ContactAuditPayload>(entry.PayloadJson)!;
-        Assert.Equal(new ContactAuditPayload(domainEvent.OwnerId, "Ana", "ana@example.com", null), payload);
+        var published = Assert.Single(publisher.Published);
+        Assert.Equal(new AuditEvent(domainEvent.EventId,
+                                    domainEvent.OccurredAt,
+                                    "contact.deleted",
+                                    domainEvent.ContactId.ToString(),
+                                    "Contact",
+                                    new ContactAuditPayload(domainEvent.OwnerId, "Ana", "ana@example.com", null)),
+                     published);
     }
 }

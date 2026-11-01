@@ -9,13 +9,12 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDb"));
 
-builder.Services.Configure<RabbitMqSettings>(
-    builder.Configuration.GetSection("RabbitMq"));
+var rabbitMqSettings = builder.Configuration.GetSection("RabbitMq").Get<RabbitMqSettings>() ?? new RabbitMqSettings();
 
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
-builder.Services.AddHostedService<AuditEventConsumer>();
+builder.Services.AddAuditEventConsumer(rabbitMqSettings);
 
 builder.AddObservability();
 

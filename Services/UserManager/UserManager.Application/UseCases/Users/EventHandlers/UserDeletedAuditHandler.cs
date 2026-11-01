@@ -1,33 +1,30 @@
-﻿using MediatR;
-using System.Text.Json;
+using MediatR;
 using UserManager.Application.Events;
-using UserManager.Application.Outbox.Interfaces;
+using UserManager.Application.Events.Interfaces;
 using UserManager.Domain.Events.Entities;
 
-namespace UserManager.Application.UseCases.Users.EventHandlers
+namespace UserManager.Application.UseCases.Users.EventHandlers;
+
+public sealed class UserDeletedAuditHandler : INotificationHandler<DomainEventNotification<UserDeletedDomainEvent>>
 {
-    public class UserDeletedAuditHandler : INotificationHandler<DomainEventNotification<UserDeletedDomainEvent>>
+    private readonly IAuditEventPublisher _auditEventPublisher;
+
+    public UserDeletedAuditHandler(IAuditEventPublisher auditEventPublisher)
     {
-        private readonly IOutboxRepository _outboxRepository;
+        _auditEventPublisher = auditEventPublisher;
+    }
 
-        public UserDeletedAuditHandler(IOutboxRepository outboxRepository)
-        {
-            _outboxRepository = outboxRepository;
-        }
+    public Task Handle(DomainEventNotification<UserDeletedDomainEvent> notification, CancellationToken cancellationToken)
+    {
+        var domainEvent = notification.DomainEvent;
 
-        public Task Handle(DomainEventNotification<UserDeletedDomainEvent> notification, CancellationToken cancellationToken)
-        {
-            var domainEvent = notification.DomainEvent;
+        var auditEvent = new AuditEvent(domainEvent.EventId,
+                                        domainEvent.OccurredAt,
+                                        EventType: "user.deleted",
+                                        AggregateId: domainEvent.UserId.ToString(),
+                                        AggregateType: "User",
+                                        Payload: new UserDeletedAuditPayload(domainEvent.Name, domainEvent.Email));
 
-            var payload = new UserDeletedAuditPayload(domainEvent.Name, domainEvent.Email);
-            var payloadJson = JsonSerializer.Serialize(payload);
-
-            _outboxRepository.Add(eventType: "user.deleted",
-                                  aggregateId: domainEvent.UserId.ToString(),
-                                  aggregateType: "User",
-                                  payloadJson: payloadJson);
-
-            return Task.CompletedTask;
-        }
+        return _auditEventPublisher.PublishAsync(auditEvent, cancellationToken);
     }
 }

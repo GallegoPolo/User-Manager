@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using UserManager.Domain.Entities;
 using UserManager.Domain.ValueObjects;
-using UserManager.Infrastructure.IntegrationTests.Outbox;
+using UserManager.Infrastructure.IntegrationTests.Fixtures;
 using UserManager.Infrastructure.Repositories;
 
 namespace UserManager.Infrastructure.IntegrationTests.Repositories;

@@ -1,31 +1,30 @@
 using MediatR;
-using System.Text.Json;
 using UserManager.Application.Events;
-using UserManager.Application.Outbox.Interfaces;
+using UserManager.Application.Events.Interfaces;
 using UserManager.Domain.Events.Entities;
 
 namespace UserManager.Application.UseCases.Contacts.EventHandlers;
 
 public sealed class ContactUpdatedAuditHandler : INotificationHandler<DomainEventNotification<ContactUpdatedDomainEvent>>
 {
-    private readonly IOutboxRepository _outboxRepository;
+    private readonly IAuditEventPublisher _auditEventPublisher;
 
-    public ContactUpdatedAuditHandler(IOutboxRepository outboxRepository)
+    public ContactUpdatedAuditHandler(IAuditEventPublisher auditEventPublisher)
     {
-        _outboxRepository = outboxRepository;
+        _auditEventPublisher = auditEventPublisher;
     }
 
     public Task Handle(DomainEventNotification<ContactUpdatedDomainEvent> notification, CancellationToken cancellationToken)
     {
         var domainEvent = notification.DomainEvent;
 
-        var payload = new ContactAuditPayload(domainEvent.OwnerId, domainEvent.Name, domainEvent.Email, domainEvent.Phone);
+        var auditEvent = new AuditEvent(domainEvent.EventId,
+                                        domainEvent.OccurredAt,
+                                        EventType: "contact.updated",
+                                        AggregateId: domainEvent.ContactId.ToString(),
+                                        AggregateType: "Contact",
+                                        Payload: new ContactAuditPayload(domainEvent.OwnerId, domainEvent.Name, domainEvent.Email, domainEvent.Phone));
 
-        _outboxRepository.Add(eventType: "contact.updated",
-                              aggregateId: domainEvent.ContactId.ToString(),
-                              aggregateType: "Contact",
-                              payloadJson: JsonSerializer.Serialize(payload));
-
-        return Task.CompletedTask;
+        return _auditEventPublisher.PublishAsync(auditEvent, cancellationToken);
     }
 }

@@ -8,6 +8,7 @@ namespace AuditService.Infrastructure.IntegrationTests.TestDoubles;
 public sealed class FakeAuditLogRepository : IAuditLogRepository
 {
     private readonly int _failuresBeforeSuccess;
+    private readonly TaskCompletionSource<AuditLog> _saved = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _addCallCount;
 
     public FakeAuditLogRepository(int failuresBeforeSuccess)
@@ -27,21 +28,11 @@ public sealed class FakeAuditLogRepository : IAuditLogRepository
         if (callNumber <= _failuresBeforeSuccess)
             throw new InvalidOperationException("Falha transitória simulada.");
 
+        _saved.TrySetResult(auditLog);
         return Task.FromResult(true);
     }
 
-    public async Task WaitForAddCallsAsync(int count, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-
-        while (AddCallCount < count)
-        {
-            if (DateTime.UtcNow >= deadline)
-                throw new TimeoutException($"Esperava {count} chamadas a AddAsync, houve {AddCallCount}.");
-
-            await Task.Delay(TimeSpan.FromMilliseconds(100));
-        }
-    }
+    public Task<AuditLog> WaitForSavedAsync(TimeSpan timeout) => _saved.Task.WaitAsync(timeout);
 
     public Task<bool> EventExistsAsync(Guid eventId, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();

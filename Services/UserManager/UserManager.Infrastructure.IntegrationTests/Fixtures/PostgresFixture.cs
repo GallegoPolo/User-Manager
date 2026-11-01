@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 using UserManager.Infrastructure.Persistence;
 
-namespace UserManager.Infrastructure.IntegrationTests.Outbox;
+namespace UserManager.Infrastructure.IntegrationTests.Fixtures;
 
 public sealed class PostgresFixture : IAsyncLifetime
 {

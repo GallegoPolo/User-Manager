@@ -1,9 +1,9 @@
+using MassTransit.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using UserManager.Infrastructure.Outbox;
 
 namespace UserManager.Api.Extensions;
 
@@ -11,7 +11,6 @@ public static class ObservabilityExtensions
 {
     private const string ServiceName = "user-manager-api";
     private const string NpgsqlSourceName = "Npgsql";
-    private const string RabbitMqPublisherSourceName = "RabbitMQ.Client.Publisher";
 
     public static IHostApplicationBuilder AddObservability(this IHostApplicationBuilder builder)
     {
@@ -26,8 +25,7 @@ public static class ObservabilityExtensions
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation()
                 .AddSource(NpgsqlSourceName)
-                .AddSource(OutboxTelemetry.ActivitySourceName)
-                .AddSource(RabbitMqPublisherSourceName))
+                .AddSource(DiagnosticHeaders.DefaultListenerName))
             .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation())
             .UseOtlpExporter();
 

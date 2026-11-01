@@ -2,7 +2,7 @@ using RabbitMQ.Client;
 using Testcontainers.RabbitMq;
 using UserManager.Infrastructure.Messaging;
 
-namespace UserManager.Infrastructure.IntegrationTests.Messaging;
+namespace UserManager.Infrastructure.IntegrationTests.Fixtures;
 
 public sealed class RabbitMqFixture : IAsyncLifetime
 {
@@ -18,13 +18,12 @@ public sealed class RabbitMqFixture : IAsyncLifetime
 
     public Task DisposeAsync() => _container.DisposeAsync().AsTask();
 
-    public RabbitMqSettings CreateSettings(string exchangeName) => new()
+    public RabbitMqSettings CreateSettings() => new()
     {
         HostName = _container.Hostname,
         Port = _container.GetMappedPublicPort(RabbitMqBuilder.RabbitMqPort),
         UserName = UserName,
-        Password = Password,
-        ExchangeName = exchangeName
+        Password = Password
     };
 
     public Task<IConnection> CreateConnectionAsync()

@@ -18,15 +18,5 @@
       "write": ".*",
       "read": ".*"
     }
-  ],
-  "policies": [
-    {
-      "vhost": "/",
-      "name": "audit-events-dlx",
-      "pattern": "^audit_events$",
-      "apply-to": "queues",
-      "definition": { "dead-letter-exchange": "audit_exchange.dlx" },
-      "priority": 0
-    }
   ]
 }

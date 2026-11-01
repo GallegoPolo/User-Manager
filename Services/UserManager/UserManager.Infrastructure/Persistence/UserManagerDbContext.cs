@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using UserManager.Domain.Entities;
 using UserManager.Domain.ValueObjects;
-using UserManager.Infrastructure.Outbox;
 
 namespace UserManager.Infrastructure.Persistence
 {
@@ -11,7 +11,6 @@ namespace UserManager.Infrastructure.Persistence
 
         public DbSet<User> Users => Set<User>();
         public DbSet<Contact> Contacts => Set<Contact>();
-        public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -44,17 +43,9 @@ namespace UserManager.Infrastructure.Persistence
                 entity.Ignore(c => c.DomainEvents);
             });
 
-            modelBuilder.Entity<OutboxMessage>(entity =>
-            {
-                entity.ToTable("OutboxMessages");
-                entity.HasKey(m => m.Id);
-                entity.Property(m => m.EventType).IsRequired().HasMaxLength(100);
-                entity.Property(m => m.AggregateId).IsRequired().HasMaxLength(100);
-                entity.Property(m => m.AggregateType).IsRequired().HasMaxLength(100);
-                entity.Property(m => m.PayloadJson).IsRequired();
-                entity.Property(m => m.TraceParent).HasMaxLength(55);
-                entity.HasIndex(m => m.ProcessedAt); // Filtrar mais a query para processar
-            });
+            modelBuilder.AddInboxStateEntity();
+            modelBuilder.AddOutboxMessageEntity();
+            modelBuilder.AddOutboxStateEntity();
         }
 
     }

@@ -1,14 +1,11 @@
 ﻿using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using UserManager.Application.Events.Interfaces;
-using UserManager.Application.Outbox.Interfaces;
 using UserManager.Application.UseCases.Users.Behaviors;
 using UserManager.Application.UseCases.Users.Handlers;
 using UserManager.Domain.Interfaces;
 using UserManager.Domain.Services;
 using UserManager.Infrastructure.Messaging;
-using UserManager.Infrastructure.Outbox;
 using UserManager.Infrastructure.Persistence;
 using UserManager.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -43,10 +40,6 @@ namespace UserManager.Api.Extensions
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IContactRepository, ContactRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped<IOutboxRepository, OutboxRepository>();
-            services.AddScoped<OutboxRepository>();
-            services.AddScoped<IAuditEventPublisher, RabbitMqAuditEventPublisher>();
-            services.AddHostedService<OutboxProcessorBackgroundService>();
             return services;
         }
 
@@ -66,8 +59,8 @@ namespace UserManager.Api.Extensions
 
         public static IServiceCollection AddMessaging(this IServiceCollection services, ConfigurationManager configuration)
         {
-            services.Configure<RabbitMqSettings>(configuration.GetSection("RabbitMq"));
-            return services;
+            var rabbitMqSettings = configuration.GetSection("RabbitMq").Get<RabbitMqSettings>() ?? new RabbitMqSettings();
+            return services.AddAuditMessaging(rabbitMqSettings);
         }
 
         public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)

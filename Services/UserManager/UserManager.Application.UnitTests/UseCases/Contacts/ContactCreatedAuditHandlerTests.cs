@@ -1,4 +1,3 @@
-using System.Text.Json;
 using UserManager.Application.Events;
 using UserManager.Application.UnitTests.Fakes;
 using UserManager.Application.UseCases.Contacts.EventHandlers;
@@ -9,23 +8,24 @@ namespace UserManager.Application.UnitTests.UseCases.Contacts;
 public sealed class ContactCreatedAuditHandlerTests
 {
     [Fact]
-    public async Task Handle_AddsContactCreatedMessageToOutbox()
+    public async Task Handle_PublishesContactCreatedAuditEvent()
     {
         // Arrange
-        var outbox = new FakeOutboxRepository();
+        var publisher = new FakeAuditEventPublisher();
         var domainEvent = new ContactCreatedDomainEvent(Guid.NewGuid(), Guid.NewGuid(), "Ana", "ana@example.com", null);
         var notification = new DomainEventNotification<ContactCreatedDomainEvent>(domainEvent);
 
         // Act
-        await new ContactCreatedAuditHandler(outbox).Handle(notification, CancellationToken.None);
+        await new ContactCreatedAuditHandler(publisher).Handle(notification, CancellationToken.None);
 
         // Assert
-        var entry = Assert.Single(outbox.Entries);
-        Assert.Equal("contact.created", entry.EventType);
-        Assert.Equal(domainEvent.ContactId.ToString(), entry.AggregateId);
-        Assert.Equal("Contact", entry.AggregateType);
-
-        var payload = JsonSerializer.Deserialize<ContactAuditPayload>(entry.PayloadJson)!;
-        Assert.Equal(new ContactAuditPayload(domainEvent.OwnerId, "Ana", "ana@example.com", null), payload);
+        var published = Assert.Single(publisher.Published);
+        Assert.Equal(new AuditEvent(domainEvent.EventId,
+                                    domainEvent.OccurredAt,
+                                    "contact.created",
+                                    domainEvent.ContactId.ToString(),
+                                    "Contact",
+                                    new ContactAuditPayload(domainEvent.OwnerId, "Ana", "ana@example.com", null)),
+                     published);
     }
 }
