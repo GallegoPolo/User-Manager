@@ -95,5 +95,20 @@ public sealed class CreateContactHandlerTests
         Assert.Null(Assert.Single(_contacts.Contacts).Email);
     }
 
+    [Fact]
+    public async Task Handle_AddsContactBeforeSaving()
+    {
+        // Arrange
+        var contactsAtSave = 0;
+        _unitOfWork.OnSave = () => contactsAtSave = _contacts.Contacts.Count;
+        var command = new CreateContactCommand(OwnerId, "Ana", "ana@example.com", null);
+
+        // Act
+        await CreateHandler().Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(1, contactsAtSave);
+    }
+
     private CreateContactHandler CreateHandler() => new(_users, _contacts, _unitOfWork);
 }

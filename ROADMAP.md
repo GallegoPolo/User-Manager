@@ -74,8 +74,8 @@ Por quê:
 - [ ] **C — Contatos** (`Contact` pertencente ao `User`; regras e eventos de domínio)
   - [x] **C1 — AuditService conhece `contact.*`** (consumidor primeiro): `EEventType` e `KnownEventTypes` ganham `contact.created/updated/deleted`, para os eventos novos não caírem na DLQ.
   - [x] **C2 — Domínio**: Value Objects `Email` e `PhoneNumber`, agregado `Contact` (independente, com `OwnerId`) e eventos.
-  - [x] **C3 — Criar e listar**: `Result<T>` com `ErrorType` (`Validation`/`NotFound`/`Conflict` → 400/404/409); `POST`/`GET /api/users/{userId}/contacts`; tabela `Contacts` (conversores EF para os VOs, índice único `(OwnerId, Email)`, FK com cascade); `contact.created` auditado pela Outbox. Corrida de duplicado testada ponta a ponta (200 POSTs simultâneos: nenhum 500; o que escapa da checagem vira `23505` → 409). Novo projeto `UserManager.Application.UnitTests` (fakes escritos à mão).
-  - [ ] **C4 — Detalhar, alterar, excluir**.
+  - [x] **C3 — Criar e listar** (`b36aed5`): `Result<T>` com `ErrorType` (`Validation`/`NotFound`/`Conflict` → 400/404/409); `POST`/`GET /api/users/{userId}/contacts`; tabela `Contacts` (conversores EF para os VOs, índice único `(OwnerId, Email)`, FK com cascade); `contact.created` auditado pela Outbox. Corrida de duplicado testada ponta a ponta (200 POSTs simultâneos: nenhum 500; o que escapa da checagem vira `23505` → 409). Novo projeto `UserManager.Application.UnitTests` (fakes escritos à mão).
+  - [x] **C4 — Detalhar, alterar, excluir**: `GET`/`PUT`/`DELETE /api/users/{userId}/contacts/{contactId}`. Busca sempre por `(dono, contato)`: contato de outro dono → 404 (nunca 403, que revelaria a existência). `PUT` é substituição completa; manter o próprio e-mail não é conflito (`exceptContactId`). Regras de Create/Update num validador só (`IContactDetails` + `Include`); `contact.updated`/`contact.deleted` auditados com um payload único (`ContactAuditPayload`). `Location` do `POST` aponta para o `GET` por id.
   - [ ] **C5 — `User` usa o Value Object `Email`**.
 
 ### Frente B — Identidade
@@ -111,15 +111,15 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Seção "Rodar" do CLAUDE.md e passo a passo de ambiente zerado | docs | quando conveniente |
 | MongoDB sem spans (driver 3.6 sem suporte nativo a OpenTelemetry) | AuditService | quando o driver suportar |
 | `AuditService.Api` e `AuthService` sem OpenTelemetry | AuditService.Api, AuthService | B |
+| Worker do AuditService morre se o RabbitMQ não estiver pronto na partida (`BrokerUnreachableException` no `ExecuteAsync` derruba o host; sem retry de conexão) | `AuditEventConsumer` | A5 (retry com backoff) |
 | Worker do AuditService sem métricas (`AddMeter("System.Runtime")`, sem pacote) | `AuditService.Worker` | quando conveniente |
 | Portas do Grafana/OTLP abertas em todas as interfaces, com Grafana anônima (admin) | `docker-compose.yml` | quando conveniente (`127.0.0.1:`) |
 | Traces de ruído do Swagger e de `OPTIONS` (CORS) | `UserManager.Api` | quando conveniente (filtro na instrumentação) |
 | Endpoint OTLP implícito (`localhost:4317`); em containers precisará de `OTEL_EXPORTER_OTLP_ENDPOINT` | hosts | quando os serviços forem para containers |
 | Rotas de User ainda "adivinham" o status (404/400) em vez de usar `Result.ErrorType` | `UserController` | quando conveniente (depois de C5) |
 | Conversor EF revalida o VO na leitura: se a regra de `Email`/`PhoneNumber` endurecer, linhas antigas lançam ao carregar (exige migração de dados junto) | `UserManagerDbContext` | ao mudar regra de VO |
-| `Location` do `POST` de contato aponta para `GET .../contacts/{id}`, que só existe no C4 | `ContactsController` | C4 |
-| Corrida que escapa da checagem do caso de uso cai no middleware: duplicado → 409 com corpo `ErrorResponse` (`Database`, inglês) em vez do array `Email`; dono excluído no meio do POST → FK `23503` → 400 em vez de 404. Corrigir traduzindo a violação de constraint na Infrastructure para algo neutro que o caso de uso converta em `Result.Conflict`/`NotFound` | `GlobalExceptionHandlerMiddleware` / casos de uso de contato | C4 ou antes do frontend (E) |
-| Auditoria grava e-mail/telefone de terceiros sem prazo (LGPD: mascarar ou reter por tempo limitado) | `ContactCreatedAuditPayload`, `UserCreatedAuditPayload` | quando o tema surgir |
+| Corrida que escapa da checagem do caso de uso cai no middleware: duplicado → 409 com corpo `ErrorResponse` (`Database`, inglês) em vez do array `Email`; dono excluído no meio do POST → FK `23503` → 400 em vez de 404; PUT×DELETE ou DELETE×DELETE simultâneos do mesmo contato → `UPDATE`/`DELETE` afeta 0 linhas → `DbUpdateConcurrencyException` → **500** (PUT×PUT não falha: vence a última escrita e os dois `contact.updated` são auditados). Corrigir traduzindo a violação de constraint na Infrastructure para algo neutro que o caso de uso converta em `Result.Conflict`/`NotFound` | `GlobalExceptionHandlerMiddleware` / casos de uso de contato | antes do frontend (E) — decidido adiar no C4 |
+| Auditoria grava e-mail/telefone de terceiros sem prazo (LGPD: mascarar ou reter por tempo limitado) | `ContactAuditPayload` (os 3 eventos de contato), `UserCreatedAuditPayload` | quando o tema surgir |
 | Lista de contatos sem paginação | `GET /api/users/{userId}/contacts` | quando houver volume |
 | Trace não amostrado (`traceparent ...-00`): o RabbitMQ.Client não injeta o cabeçalho e o AuditService abre um trace órfão | Outbox / RabbitMQ | quando houver sampling (sampler consistente nos dois serviços) |
 | Carta que falha para sempre acrescenta um span de erro ao trace original a cada 5 s (trace pode ficar grande demais no Tempo) | `OutboxProcessorBackgroundService` | A5 (limitar tentativas resolve; avaliar link em vez de pai nas retentativas) |
@@ -146,4 +146,6 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Unicidade do e-mail na agenda: checagem no caso de uso **e** índice único `(OwnerId, Email)` | a checagem dá a mensagem amigável; o índice fecha a corrida (`23505` → 409). `NULL` não conflita no Postgres, então vários contatos só com telefone convivem |
 | Middleware identifica erro do Postgres por `SqlState` (`PostgresErrorCodes`), não pelo texto | o texto muda com o idioma do servidor (`lc_messages`) |
 | Testes de caso de uso com **fakes escritos à mão**, sem biblioteca de mock | poucos colaboradores e interfaces pequenas; nenhum pacote a mais |
+| Recurso de outro dono → **404**, nunca 403; o repositório só busca por `(dono, id)` | 403 confirmaria que o recurso existe (OWASP IDOR); filtrar na consulta impede o vazamento por construção |
+| `PUT` de contato é **substituição completa** | semântica do HTTP; alteração parcial seria `PATCH`, fora do escopo |
 | Consumidor continua o trace do produtor (pai, não só link) | é o padrão do `RabbitMQ.Client` 7.2 (`UsePublisherAsParent = true`); travado por teste de caracterização |

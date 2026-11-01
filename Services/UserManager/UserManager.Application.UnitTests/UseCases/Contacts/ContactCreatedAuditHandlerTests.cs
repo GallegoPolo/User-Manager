@@ -25,7 +25,7 @@ public sealed class ContactCreatedAuditHandlerTests
         Assert.Equal(domainEvent.ContactId.ToString(), entry.AggregateId);
         Assert.Equal("Contact", entry.AggregateType);
 
-        var payload = JsonSerializer.Deserialize<ContactCreatedAuditPayload>(entry.PayloadJson)!;
-        Assert.Equal(new ContactCreatedAuditPayload(domainEvent.OwnerId, "Ana", "ana@example.com", null), payload);
+        var payload = JsonSerializer.Deserialize<ContactAuditPayload>(entry.PayloadJson)!;
+        Assert.Equal(new ContactAuditPayload(domainEvent.OwnerId, "Ana", "ana@example.com", null), payload);
     }
 }

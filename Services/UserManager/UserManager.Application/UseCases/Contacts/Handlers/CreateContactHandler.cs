@@ -3,7 +3,6 @@ using UserManager.Application.Common;
 using UserManager.Application.UseCases.Contacts.Commands;
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
-using UserManager.Domain.ValueObjects;
 
 namespace UserManager.Application.UseCases.Contacts.Handlers;
 
@@ -25,10 +24,10 @@ public sealed class CreateContactHandler : IRequestHandler<CreateContactCommand,
         if (!await _userRepository.ExistsAsync(command.OwnerId, cancellationToken))
             return Result<Guid>.NotFound("UserId", "Usuário não encontrado.");
 
-        var email = string.IsNullOrWhiteSpace(command.Email) ? null : Email.Create(command.Email);
-        var phone = string.IsNullOrWhiteSpace(command.Phone) ? null : PhoneNumber.Create(command.Phone);
+        var email = command.ToEmail();
+        var phone = command.ToPhoneNumber();
 
-        if (email is not null && await _contactRepository.EmailExistsAsync(command.OwnerId, email, cancellationToken))
+        if (email is not null && await _contactRepository.EmailExistsAsync(command.OwnerId, email, exceptContactId: null, cancellationToken))
             return Result<Guid>.Conflict("Email", "Já existe um contato com este e-mail na agenda.");
 
         var contact = Contact.Create(command.OwnerId, command.Name, email, phone);

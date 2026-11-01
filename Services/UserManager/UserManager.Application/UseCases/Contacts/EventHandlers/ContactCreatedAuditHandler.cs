@@ -19,7 +19,7 @@ public sealed class ContactCreatedAuditHandler : INotificationHandler<DomainEven
     {
         var domainEvent = notification.DomainEvent;
 
-        var payload = new ContactCreatedAuditPayload(domainEvent.OwnerId, domainEvent.Name, domainEvent.Email, domainEvent.Phone);
+        var payload = new ContactAuditPayload(domainEvent.OwnerId, domainEvent.Name, domainEvent.Email, domainEvent.Phone);
 
         _outboxRepository.Add(eventType: "contact.created",
                               aggregateId: domainEvent.ContactId.ToString(),

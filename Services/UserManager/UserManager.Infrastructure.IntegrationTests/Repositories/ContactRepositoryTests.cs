@@ -49,8 +49,8 @@ public sealed class ContactRepositoryTests : IClassFixture<PostgresFixture>
         // Act
         await using var context = _postgres.CreateContext();
         var repository = new ContactRepository(context);
-        var existsForOwner = await repository.EmailExistsAsync(ownerId, Email.Create(" ANA@example.com "), CancellationToken.None);
-        var existsForOther = await repository.EmailExistsAsync(otherOwnerId, Email.Create("ana@example.com"), CancellationToken.None);
+        var existsForOwner = await repository.EmailExistsAsync(ownerId, Email.Create(" ANA@example.com "), exceptContactId: null, CancellationToken.None);
+        var existsForOther = await repository.EmailExistsAsync(otherOwnerId, Email.Create("ana@example.com"), exceptContactId: null, CancellationToken.None);
 
         // Assert
         Assert.True(existsForOwner);
@@ -115,6 +115,92 @@ public sealed class ContactRepositoryTests : IClassFixture<PostgresFixture>
         await using (var context = _postgres.CreateContext())
         {
             await context.Users.Where(u => u.Id == ownerId).ExecuteDeleteAsync();
+        }
+
+        // Assert
+        Assert.Equal(0, await CountContactsAsync(ownerId));
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_IsScopedToOwner()
+    {
+        // Arrange
+        var ownerId = await CreateUserAsync();
+        var otherOwnerId = await CreateUserAsync();
+        var ana = Contact.Create(ownerId, "Ana", Email.Create("ana@example.com"), PhoneNumber.Create("11987654321"));
+        await AddContactsAsync(ana);
+
+        // Act
+        await using var context = _postgres.CreateContext();
+        var repository = new ContactRepository(context);
+        var fromOwner = await repository.GetByIdAsync(ownerId, ana.Id, CancellationToken.None);
+        var fromOther = await repository.GetByIdAsync(otherOwnerId, ana.Id, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(fromOwner);
+        Assert.Equal(Email.Create("ana@example.com"), fromOwner.Email);
+        Assert.Null(fromOther);
+    }
+
+    [Fact]
+    public async Task EmailExistsAsync_IgnoresExceptedContact()
+    {
+        // Arrange
+        var ownerId = await CreateUserAsync();
+        var ana = Contact.Create(ownerId, "Ana", Email.Create("ana@example.com"), phone: null);
+        var bruno = Contact.Create(ownerId, "Bruno", Email.Create("bruno@example.com"), phone: null);
+        await AddContactsAsync(ana, bruno);
+
+        // Act
+        await using var context = _postgres.CreateContext();
+        var repository = new ContactRepository(context);
+        var ownEmail = await repository.EmailExistsAsync(ownerId, Email.Create("ana@example.com"), ana.Id, CancellationToken.None);
+        var anotherContactsEmail = await repository.EmailExistsAsync(ownerId, Email.Create("bruno@example.com"), ana.Id, CancellationToken.None);
+
+        // Assert
+        Assert.False(ownEmail);
+        Assert.True(anotherContactsEmail);
+    }
+
+    [Fact]
+    public async Task Update_OnLoadedContact_PersistsNewValueObjects()
+    {
+        // Arrange
+        var ownerId = await CreateUserAsync();
+        var ana = Contact.Create(ownerId, "Ana", Email.Create("ana@example.com"), phone: null);
+        await AddContactsAsync(ana);
+
+        // Act
+        await using (var context = _postgres.CreateContext())
+        {
+            var loaded = await new ContactRepository(context).GetByIdAsync(ownerId, ana.Id, CancellationToken.None);
+            loaded!.Update("Ana Souza", email: null, PhoneNumber.Create("11987654321"));
+            await context.SaveChangesAsync();
+        }
+
+        // Assert
+        await using var verify = _postgres.CreateContext();
+        var stored = await verify.Contacts.SingleAsync(c => c.Id == ana.Id);
+        Assert.Equal("Ana Souza", stored.Name);
+        Assert.Null(stored.Email);
+        Assert.Equal(PhoneNumber.Create("11987654321"), stored.Phone);
+    }
+
+    [Fact]
+    public async Task Remove_DeletesContact()
+    {
+        // Arrange
+        var ownerId = await CreateUserAsync();
+        var ana = Contact.Create(ownerId, "Ana", Email.Create("ana@example.com"), phone: null);
+        await AddContactsAsync(ana);
+
+        // Act
+        await using (var context = _postgres.CreateContext())
+        {
+            var repository = new ContactRepository(context);
+            var loaded = await repository.GetByIdAsync(ownerId, ana.Id, CancellationToken.None);
+            repository.Remove(loaded!);
+            await context.SaveChangesAsync();
         }
 
         // Assert

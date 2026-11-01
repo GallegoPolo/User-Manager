@@ -24,9 +24,7 @@ public sealed class GetContactsHandler : IRequestHandler<GetContactsQuery, Resul
 
         var contacts = await _contactRepository.GetByOwnerAsync(query.OwnerId, cancellationToken);
 
-        IReadOnlyList<ContactDTO> dtos = contacts
-            .Select(c => new ContactDTO(c.Id, c.Name, c.Email?.Value, c.Phone?.Value, c.CreatedAt))
-            .ToList();
+        IReadOnlyList<ContactDTO> dtos = contacts.Select(ContactDTO.From).ToList();
 
         return Result<IReadOnlyList<ContactDTO>>.Success(dtos);
     }

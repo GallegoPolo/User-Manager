@@ -29,8 +29,17 @@ public sealed class ContactRepository : IContactRepository
             .ToListAsync(cancellationToken);
     }
 
-    public Task<bool> EmailExistsAsync(Guid ownerId, Email email, CancellationToken cancellationToken)
+    public Task<Contact?> GetByIdAsync(Guid ownerId, Guid contactId, CancellationToken cancellationToken)
     {
-        return _context.Contacts.AnyAsync(c => c.OwnerId == ownerId && c.Email == email, cancellationToken);
+        return _context.Contacts.FirstOrDefaultAsync(c => c.Id == contactId && c.OwnerId == ownerId, cancellationToken);
     }
+
+    public Task<bool> EmailExistsAsync(Guid ownerId, Email email, Guid? exceptContactId, CancellationToken cancellationToken)
+    {
+        return _context.Contacts.AnyAsync(
+            c => c.OwnerId == ownerId && c.Email == email && (exceptContactId == null || c.Id != exceptContactId.Value),
+            cancellationToken);
+    }
+
+    public void Remove(Contact contact) => _context.Contacts.Remove(contact);
 }
