@@ -20,7 +20,10 @@ namespace UserManager.Infrastructure.Persistence
                 entity.ToTable("Users");
                 entity.HasKey(u => u.Id);
                 entity.Property(u => u.Name).IsRequired().HasMaxLength(User.MAX_NAME_LENGTH);
-                entity.Property(u => u.Email).IsRequired().HasMaxLength(User.MAX_EMAIL_LENGTH);
+                entity.Property(u => u.Email)
+                    .IsRequired()
+                    .HasMaxLength(Email.MaxLength)
+                    .HasConversion(email => email.Value, value => Email.Create(value));
                 entity.HasIndex(u => u.Email).IsUnique();
                 entity.Ignore(u => u.DomainEvents);
             });

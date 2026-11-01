@@ -7,6 +7,7 @@ using UserManager.Application.UseCases.Users.Commands;
 using UserManager.Domain.Common;
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
+using UserManager.Domain.ValueObjects;
 
 namespace UserManager.Application.UseCases.Users.Handlers
 {
@@ -28,7 +29,7 @@ namespace UserManager.Application.UseCases.Users.Handlers
             if (user == null)
                 return Result<Guid>.Failure(new ValidationError("Id", "User not found"));
 
-            user.Update(command.Name, command.Email);
+            user.Update(command.Name, Email.Create(command.Email));
 
             await _repository.UpdateAsync(user);
             await _unitOfWork.SaveChangesAsync(cancellationToken);

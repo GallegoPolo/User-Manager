@@ -19,7 +19,7 @@ namespace UserManager.Application.UseCases.Users.Handlers
         {
             var users = await _repository.GetAllAsync();
 
-            var usersDTO = users.Select(user => new UserDTO(user.Id, user.Name, user.Email, user.CreatedAt));
+            var usersDTO = users.Select(user => new UserDTO(user.Id, user.Name, user.Email.Value, user.CreatedAt));
 
             return Result<IEnumerable<UserDTO>>.Success(usersDTO);
         }

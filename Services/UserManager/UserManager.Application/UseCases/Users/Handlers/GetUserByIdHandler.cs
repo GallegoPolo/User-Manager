@@ -23,7 +23,7 @@ namespace UserManager.Application.UseCases.Users.Handlers
             if (user == null)
                 return Result<UserDTO>.Failure(new ValidationError("Id", "User not found"));
 
-            var response = new UserDTO(user.Id, user.Name, user.Email, user.CreatedAt);
+            var response = new UserDTO(user.Id, user.Name, user.Email.Value, user.CreatedAt);
 
             return Result<UserDTO>.Success(response);
         }

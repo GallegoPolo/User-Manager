@@ -3,6 +3,7 @@ using UserManager.Application.Common;
 using UserManager.Application.UseCases.Users.Commands;
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
+using UserManager.Domain.ValueObjects;
 
 namespace UserManager.Application.UseCases.Users.Handlers
 {
@@ -21,10 +22,12 @@ namespace UserManager.Application.UseCases.Users.Handlers
 
         public async Task<Result<Guid>> Handle(CreateUserCommand command, CancellationToken cancellationToken)
         {
-            if (!await _userDomainService.IsEmailUniqueAsync(command.Email, cancellationToken))
+            var email = Email.Create(command.Email);
+
+            if (!await _userDomainService.IsEmailUniqueAsync(email, cancellationToken))
                 return Result<Guid>.Failure("Email", "Este e-mail já está cadastrado no sistema.");
 
-            var user = User.Create(command.Name, command.Email);
+            var user = User.Create(command.Name, email);
 
             await _repository.AddAsync(user);
             await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -36,7 +36,7 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 ## Ordem escolhida (intercalada)
 
 ```text
-A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D ✅ → C → A5 → A6 → B → E
+A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D ✅ → C ✅ → A5 → A6 → B → E
 ```
 
 Por quê:
@@ -71,12 +71,12 @@ Por quê:
 
 ### Frente C — Domínio
 
-- [ ] **C — Contatos** (`Contact` pertencente ao `User`; regras e eventos de domínio)
+- [x] **C — Contatos** (`Contact` pertencente ao `User`; regras e eventos de domínio)
   - [x] **C1 — AuditService conhece `contact.*`** (consumidor primeiro): `EEventType` e `KnownEventTypes` ganham `contact.created/updated/deleted`, para os eventos novos não caírem na DLQ.
   - [x] **C2 — Domínio**: Value Objects `Email` e `PhoneNumber`, agregado `Contact` (independente, com `OwnerId`) e eventos.
   - [x] **C3 — Criar e listar** (`b36aed5`): `Result<T>` com `ErrorType` (`Validation`/`NotFound`/`Conflict` → 400/404/409); `POST`/`GET /api/users/{userId}/contacts`; tabela `Contacts` (conversores EF para os VOs, índice único `(OwnerId, Email)`, FK com cascade); `contact.created` auditado pela Outbox. Corrida de duplicado testada ponta a ponta (200 POSTs simultâneos: nenhum 500; o que escapa da checagem vira `23505` → 409). Novo projeto `UserManager.Application.UnitTests` (fakes escritos à mão).
-  - [x] **C4 — Detalhar, alterar, excluir**: `GET`/`PUT`/`DELETE /api/users/{userId}/contacts/{contactId}`. Busca sempre por `(dono, contato)`: contato de outro dono → 404 (nunca 403, que revelaria a existência). `PUT` é substituição completa; manter o próprio e-mail não é conflito (`exceptContactId`). Regras de Create/Update num validador só (`IContactDetails` + `Include`); `contact.updated`/`contact.deleted` auditados com um payload único (`ContactAuditPayload`). `Location` do `POST` aponta para o `GET` por id.
-  - [ ] **C5 — `User` usa o Value Object `Email`**.
+  - [x] **C4 — Detalhar, alterar, excluir** (`374c51f`): `GET`/`PUT`/`DELETE /api/users/{userId}/contacts/{contactId}`. Busca sempre por `(dono, contato)`: contato de outro dono → 404 (nunca 403, que revelaria a existência). `PUT` é substituição completa; manter o próprio e-mail não é conflito (`exceptContactId`). Regras de Create/Update num validador só (`IContactDetails` + `Include`); `contact.updated`/`contact.deleted` auditados com um payload único (`ContactAuditPayload`). `Location` do `POST` aponta para o `GET` por id.
+  - [x] **C5 — `User` usa o Value Object `Email`**: `User.Create`/`Update` recebem `Email`; conversor EF na coluna existente (sem migration: `has-pending-model-changes` limpo); validadores de User usam `Email.IsValid`. Corrige dois bugs reais: e-mail com caixa diferente criava um segundo usuário (o índice único compara texto cru) e `ana@localhost` era aceito. Resolve os avisos `CS8618` do `User.cs`.
 
 ### Frente B — Identidade
 
@@ -104,7 +104,6 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Nome da DLX duplicado entre `RabbitMqSettings` e a policy do `definitions.json` (se divergirem, a mensagem volta a ser descartada em silêncio) | AuditService / `docker/rabbitmq` | A6 |
 | DLQ sem reprocessamento (replay) e sem alerta de tamanho | AuditService | D2 (alerta); replay quando houver necessidade |
 | Classes `UserCreatedEvent`, `AdminLoggedInEvent` etc. sem uso | `AuditEventBase.cs` | A6 |
-| Warnings CS8618 (construtor do EF deixa `Name`/`Email` nulos) | `User.cs` | C |
 | Vulnerabilidades em dependências de dev do frontend (`npm audit`) | `frontend` | E |
 | Tabela da Outbox cresce sem limpeza; índice em `ProcessedAt` poderia ser parcial | `OutboxMessages` | A5 |
 | RabbitMQ local é 3.13 (`rabbitmq:3-management`); 4.x muda padrões de quorum queues (delivery-limit 20) | `docker-compose.yml` | avaliar em A5 |
@@ -116,7 +115,8 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Portas do Grafana/OTLP abertas em todas as interfaces, com Grafana anônima (admin) | `docker-compose.yml` | quando conveniente (`127.0.0.1:`) |
 | Traces de ruído do Swagger e de `OPTIONS` (CORS) | `UserManager.Api` | quando conveniente (filtro na instrumentação) |
 | Endpoint OTLP implícito (`localhost:4317`); em containers precisará de `OTEL_EXPORTER_OTLP_ENDPOINT` | hosts | quando os serviços forem para containers |
-| Rotas de User ainda "adivinham" o status (404/400) em vez de usar `Result.ErrorType` | `UserController` | quando conveniente (depois de C5) |
+| Rotas de User ainda "adivinham" o status (404/400) em vez de usar `Result.ErrorType`; e-mail duplicado no `POST` dá 400 (Contacts dá 409) | `UserController` | quando conveniente (depois de C5) |
+| `PUT` de usuário não checa se o e-mail já é de outro usuário: a colisão (agora detectada, pois o valor é normalizado) cai no índice único → 409 genérico do middleware, em vez da mensagem do caso de uso. Corrigir como no C4 (`exceptUserId`) junto da padronização 400/409 de User | `UpdateUserHandler` | junto do débito acima |
 | Conversor EF revalida o VO na leitura: se a regra de `Email`/`PhoneNumber` endurecer, linhas antigas lançam ao carregar (exige migração de dados junto) | `UserManagerDbContext` | ao mudar regra de VO |
 | Corrida que escapa da checagem do caso de uso cai no middleware: duplicado → 409 com corpo `ErrorResponse` (`Database`, inglês) em vez do array `Email`; dono excluído no meio do POST → FK `23503` → 400 em vez de 404; PUT×DELETE ou DELETE×DELETE simultâneos do mesmo contato → `UPDATE`/`DELETE` afeta 0 linhas → `DbUpdateConcurrencyException` → **500** (PUT×PUT não falha: vence a última escrita e os dois `contact.updated` são auditados). Corrigir traduzindo a violação de constraint na Infrastructure para algo neutro que o caso de uso converta em `Result.Conflict`/`NotFound` | `GlobalExceptionHandlerMiddleware` / casos de uso de contato | antes do frontend (E) — decidido adiar no C4 |
 | Auditoria grava e-mail/telefone de terceiros sem prazo (LGPD: mascarar ou reter por tempo limitado) | `ContactAuditPayload` (os 3 eventos de contato), `UserCreatedAuditPayload` | quando o tema surgir |
@@ -138,6 +138,7 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Concorrência da Outbox por **lease** (`LockedUntil`) + `FOR UPDATE SKIP LOCKED` | transação curta, sem segurar tranca durante a publicação; escala com N Workers. Rejeitados: tranca durante a publicação (transação longa) e advisory lock (um Worker por vez, não escala) |
 | Lease calculado com `now()` do Postgres | um único relógio para todas as instâncias; evita divergência entre servidores |
 | Migration aplicada **antes** do código novo (expand → deploy) | com `LockedUntil` (A4) e `TraceParent` (D) mapeadas, o `INSERT` e o claim (`RETURNING *`) da Outbox incluem as colunas; código novo em banco sem a migration falha ao criar/alterar usuário. A mudança é aditiva e nula, então o código antigo convive com o esquema novo |
+| `User.Email` virou Value Object **sem migration de dados** | a coluna não muda; pré-condição verificada no banco: todos os e-mails já normalizados, válidos e sem colisão após `lower(trim())`. Em produção, rodar essa checagem antes do deploy, porque o conversor chama `Email.Create` na leitura. Dois modos de falha: (1) e-mail antigo **inválido** → qualquer leitura daquele usuário (lista, GET, PUT, DELETE) lança `DomainException` → 422, um erro do servidor reportado como do cliente; (2) e-mail válido mas **não normalizado** (`Ana@X.com`) → é lido normalizado, mas `EmailExistsAsync` compara com a coluna crua e o índice (sensível a caixa) aceita o duplicado. Checagem: `SELECT "Email" FROM "Users" WHERE "Email" <> lower(btrim("Email")) OR "Email" !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'` e `SELECT lower(btrim("Email")) FROM "Users" GROUP BY 1 HAVING count(*) > 1` (ambos devem voltar vazios) |
 | Observabilidade com **OpenTelemetry + OTLP** | padrão aberto (CNCF); o backend é trocável sem mudar código (Grafana local hoje; Grafana Cloud, Datadog etc. depois) |
 | Backend local `grafana/otel-lgtm` com volume | gratuito, ecossistema usado no mercado (Tempo, Loki, Prometheus, Grafana) e persiste dados; a própria Grafana declara a imagem como de dev/demo |
 | Sem pacotes prerelease (`RabbitMQ.Client.OpenTelemetry`) e sem pacotes desnecessários (`Npgsql.OpenTelemetry`) | `RabbitMQ.Client` 7.2 e Npgsql 10 já têm `ActivitySource` embutido; basta `AddSource` |

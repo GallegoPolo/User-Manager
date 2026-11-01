@@ -1,6 +1,7 @@
 ﻿using UserManager.Domain.Events.Entities;
 using UserManager.Domain.Events.Interfaces;
 using UserManager.Domain.Exceptions;
+using UserManager.Domain.ValueObjects;
 
 namespace UserManager.Domain.Entities;
 
@@ -9,17 +10,16 @@ public class User : IHasDomainEvents
     private User() { }
     private readonly List<IDomainEvent> _domainEvents = new();
     public const int MAX_NAME_LENGTH = 200;
-    public const int MAX_EMAIL_LENGTH = 200;
 
     public Guid Id { get; private set; }
-    public string Name { get; private set; }
-    public string Email { get; private set; }
+    public string Name { get; private set; } = string.Empty;
+    public Email Email { get; private set; } = null!;
     public DateTime CreatedAt { get; private set; }
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     public void ClearDomainEvents() => _domainEvents.Clear();
 
-    public static User Create(string name, string email)
+    public static User Create(string name, Email email)
     {
         EnsureValid(name, email);
 
@@ -31,34 +31,32 @@ public class User : IHasDomainEvents
             CreatedAt = DateTime.UtcNow
         };
 
-        user._domainEvents.Add(new UserCreatedDomainEvent(user.Id, user.Name, user.Email));
+        user._domainEvents.Add(new UserCreatedDomainEvent(user.Id, user.Name, user.Email.Value));
         return user;
     }
 
-    public void Update(string name, string email)
+    public void Update(string name, Email email)
     {
         EnsureValid(name, email);
 
         Name = name;
         Email = email;
 
-        _domainEvents.Add(new UserUpdatedDomainEvent(Id, Name, Email));
+        _domainEvents.Add(new UserUpdatedDomainEvent(Id, Name, Email.Value));
     }
 
     public void Delete()
     {
-        _domainEvents.Add(new UserDeletedDomainEvent(Id, Name, Email));
+        _domainEvents.Add(new UserDeletedDomainEvent(Id, Name, Email.Value));
     }
 
-    private static void EnsureValid(string name, string email)
+    private static void EnsureValid(string name, Email email)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException("Name is required");
         if (name.Length > MAX_NAME_LENGTH)
             throw new DomainException($"Name must not exceed {MAX_NAME_LENGTH} characters");
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
-            throw new DomainException("Email is invalid");
-        if (email.Length > MAX_EMAIL_LENGTH)
-            throw new DomainException($"Email must not exceed {MAX_EMAIL_LENGTH} characters");
+        if (email is null)
+            throw new DomainException("Email is required");
     }
 }

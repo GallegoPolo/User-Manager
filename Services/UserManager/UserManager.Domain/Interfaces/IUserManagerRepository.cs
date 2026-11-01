@@ -1,11 +1,12 @@
 ﻿using UserManager.Domain.Entities;
+using UserManager.Domain.ValueObjects;
 
 namespace UserManager.Domain.Interfaces;
 
 public interface IUserRepository
 {
     Task AddAsync(User user);
-    Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
+    Task<bool> EmailExistsAsync(Email email, CancellationToken cancellationToken);
     Task UpdateAsync(User user);
     Task DeleteAsync(User user);
     Task<User?> GetByIdAsync(Guid id);

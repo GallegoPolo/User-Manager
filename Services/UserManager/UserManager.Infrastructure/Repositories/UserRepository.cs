@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
+using UserManager.Domain.ValueObjects;
 using UserManager.Infrastructure.Persistence;
 
 namespace UserManager.Infrastructure.Repositories
@@ -45,7 +46,7 @@ namespace UserManager.Infrastructure.Repositories
             return await _context.Users.ToListAsync();
         }
 
-        public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
+        public async Task<bool> EmailExistsAsync(Email email, CancellationToken cancellationToken)
         {
             return await _context.Users.AnyAsync(u => u.Email == email, cancellationToken);
         }

@@ -1,5 +1,7 @@
 ﻿using FluentValidation;
 using UserManager.Application.UseCases.Users.Commands;
+using UserManager.Domain.Entities;
+using UserManager.Domain.ValueObjects;
 
 namespace UserManager.Application.UseCases.Users.Validators
 {
@@ -12,11 +14,11 @@ namespace UserManager.Application.UseCases.Users.Validators
 
             RuleFor(x => x.Name)
                 .NotEmpty().WithMessage("Name is required")
-                .MaximumLength(200).WithMessage("Name must not exceed 200 characters");
+                .MaximumLength(User.MAX_NAME_LENGTH).WithMessage($"Name must not exceed {User.MAX_NAME_LENGTH} characters");
 
             RuleFor(x => x.Email)
                 .NotEmpty().WithMessage("Email is required")
-                .EmailAddress().WithMessage("Invalid email format");
+                .Must(Email.IsValid).WithMessage("Invalid email format");
         }
     }
 }
