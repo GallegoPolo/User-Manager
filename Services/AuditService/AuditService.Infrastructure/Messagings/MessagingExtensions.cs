@@ -22,6 +22,11 @@ public static class MessagingExtensions
                 rabbit.ReceiveEndpoint(settings.QueueName, endpoint =>
                 {
                     endpoint.PrefetchCount = settings.PrefetchCount;
+                    endpoint.UseMessageRetry(retry =>
+                    {
+                        retry.Ignore<InvalidAuditEventException>();
+                        retry.Intervals(settings.GetRetryIntervals());
+                    });
                     endpoint.ConfigureConsumer<AuditEventConsumer>(context);
                 });
             });

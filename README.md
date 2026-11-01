@@ -41,9 +41,9 @@ Fluxo resumido do Create/Update/Delete de usuário:
 
 1. UserManager persiste o usuário no PostgreSQL  
 2. Dispara Domain Event (MediatR)  
-3. Handler de auditoria grava mensagem na tabela **Outbox** na mesma transação  
-4. Background service lê o Outbox e publica no **RabbitMQ**  
-5. **Audit Worker** consome e salva o log no **MongoDB**  
+3. Handler de auditoria publica pelo **MassTransit**, que grava a mensagem na **Outbox** (tabela `OutboxMessage`) na mesma transação  
+4. O serviço de entrega do MassTransit lê a Outbox e publica no **RabbitMQ**  
+5. **Audit Worker** consome (com retry) e salva o log no **MongoDB**  
 6. Frontend consulta a trilha pela **AuditService API**
 
 ## Stack
@@ -56,7 +56,7 @@ Fluxo resumido do Create/Update/Delete de usuário:
 - FluentValidation
 - JWT + Argon2id
 - Redis
-- RabbitMQ
+- RabbitMQ + MassTransit 8 (Outbox do EF Core, retry, fila de erro)
 - MongoDB
 - Polly
 
@@ -119,6 +119,22 @@ Isso:
 2. Sobe Auth, UserManager, Audit API, Audit Worker e o frontend juntos  
 
 Frontend: http://localhost:5173
+
+### Mensagens de auditoria com falha (reprocesso manual)
+
+O Audit Worker tenta gravar cada evento até 5 vezes, esperando 1s, 5s, 15s e 30s entre as tentativas (a mensagem fica retida em memória nesse meio-tempo). Com o MongoDB fora do ar, cada tentativa ainda leva ~30s até o driver desistir, então o ciclo todo dura uns 3–4 minutos. Se todas falharem, a mensagem vai para a fila **`audit_events_error`** com o motivo nos cabeçalhos `MT-Fault-*` (tipo da exceção, mensagem, stack trace, número de retentativas). Evento inválido (tipo desconhecido, campo obrigatório vazio ou ausente, JSON fora do contrato) vai direto, sem retry.
+
+Os intervalos podem ser trocados em `RabbitMq:RetryIntervals` (formato `"00:00:05"`); a lista configurada substitui a padrão.
+
+Para reprocessar depois de corrigir a causa:
+
+1. Abra o painel do RabbitMQ (http://localhost:15672, `dev` / `dev123`) → **Queues** → `audit_events_error`
+2. Use **Get messages** para ler o motivo
+3. Em **Move messages**, informe `audit_events` como destino e clique em **Move messages**
+
+O **Move messages** move a fila inteira: um evento inválido volta para `audit_events_error` na hora, porque a causa dele está na mensagem, não no ambiente.
+
+O consumidor é idempotente (índice único em `eventId` no MongoDB), então reprocessar uma mensagem que já foi gravada não duplica o log.
 
 ### Login padrão (bootstrap)
 

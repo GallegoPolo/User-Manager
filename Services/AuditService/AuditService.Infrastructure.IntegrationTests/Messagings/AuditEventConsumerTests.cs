@@ -17,6 +17,8 @@ namespace AuditService.Infrastructure.IntegrationTests.Messagings;
 public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
 {
     private const string FaultMessageHeader = "MT-Fault-Message";
+    private const string FaultRetryCountHeader = "MT-Fault-RetryCount";
+    private static readonly TimeSpan[] TestRetryIntervals = [TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(50)];
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
 
@@ -27,6 +29,7 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
     {
         _rabbitMq = rabbitMq;
         _settings = rabbitMq.CreateSettings($"audit_events_{Guid.NewGuid():N}");
+        _settings.RetryIntervals = TestRetryIntervals;
     }
 
     private string ErrorQueueName => $"{_settings.QueueName}_error";
@@ -62,7 +65,68 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         var headers = Assert.IsAssignableFrom<IDictionary<string, object?>>(faulted.BasicProperties.Headers);
 
         Assert.Contains("user.archived", ReadString(headers, FaultMessageHeader));
+        Assert.True(WasNotRetried(headers));
         Assert.Equal(0, repository.AddCallCount);
+    }
+
+    [Fact]
+    public async Task MessageMissingRequiredField_GoesToErrorQueueWithoutRetry()
+    {
+        // Arrange
+        var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 0);
+        await using var bus = await StartBusAsync(repository);
+
+        // Act
+        await PublishRawEnvelopeAsync(new
+        {
+            messageId = Guid.NewGuid(),
+            messageType = new[] { "urn:message:Audit.Contracts:AuditEventOccurred" },
+            message = new { eventId = Guid.NewGuid(), aggregateId = "x", aggregateType = "User", performedBy = "system", performedAt = DateTime.UtcNow }
+        });
+
+        // Assert
+        var faulted = await WaitForMessageAsync(ErrorQueueName);
+        var headers = Assert.IsAssignableFrom<IDictionary<string, object?>>(faulted.BasicProperties.Headers);
+
+        Assert.Contains("eventType", ReadString(headers, FaultMessageHeader));
+        Assert.True(WasNotRetried(headers), ReadString(headers, FaultRetryCountHeader));
+        Assert.Equal(0, repository.AddCallCount);
+    }
+
+    [Fact]
+    public async Task TransientFailure_IsRetriedAndThenSaved()
+    {
+        // Arrange
+        var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 2);
+        await using var bus = await StartBusAsync(repository);
+        var message = ValidMessage();
+
+        // Act
+        await bus.Bus.Publish(message);
+
+        // Assert
+        var saved = await repository.WaitForSavedAsync(WaitTimeout);
+        Assert.Equal(message.EventId, saved.EventId);
+        Assert.Equal(3, repository.AddCallCount);
+    }
+
+    [Fact]
+    public async Task PersistentFailure_GoesToErrorQueueAfterAllRetries()
+    {
+        // Arrange
+        var repository = new FakeAuditLogRepository(failuresBeforeSuccess: int.MaxValue);
+        await using var bus = await StartBusAsync(repository);
+
+        // Act
+        await bus.Bus.Publish(ValidMessage());
+
+        // Assert
+        var faulted = await WaitForMessageAsync(ErrorQueueName);
+        var headers = Assert.IsAssignableFrom<IDictionary<string, object?>>(faulted.BasicProperties.Headers);
+
+        Assert.Contains("Falha transitória simulada", ReadString(headers, FaultMessageHeader));
+        Assert.Equal(TestRetryIntervals.Length.ToString(), ReadString(headers, FaultRetryCountHeader));
+        Assert.Equal(TestRetryIntervals.Length + 1, repository.AddCallCount);
     }
 
     [Fact]
@@ -140,8 +204,25 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         }
     }
 
+    private async Task PublishRawEnvelopeAsync(object envelope)
+    {
+        await using var connection = await _rabbitMq.CreateConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync();
+
+        var properties = new BasicProperties { ContentType = "application/vnd.masstransit+json" };
+        await channel.BasicPublishAsync(_settings.QueueName, string.Empty, mandatory: true, properties, JsonSerializer.SerializeToUtf8Bytes(envelope));
+    }
+
+    private static bool WasNotRetried(IDictionary<string, object?> headers)
+    {
+        return !headers.ContainsKey(FaultRetryCountHeader) || ReadString(headers, FaultRetryCountHeader) == "0";
+    }
+
     private static string ReadString(IDictionary<string, object?> headers, string key)
     {
+        if (!headers.ContainsKey(key))
+            return string.Empty;
+
         return headers[key] switch
         {
             byte[] bytes => Encoding.UTF8.GetString(bytes),
