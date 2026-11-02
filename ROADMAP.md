@@ -18,7 +18,8 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 | O que acontece com uma mensagem inválida? | A3 | ✅ |
 | Dois workers pegam a mesma mensagem? Como escalar os workers? | A4 | ✅ |
 | Como evitar retry infinito? | A5 | 🟡 (consumidor sim; produtor sem rota e mensagem que derruba o processo, ver débitos) |
-| Por que o domínio não conhece o RabbitMQ? | A6 | 🟡 |
+| Por que o domínio não conhece o RabbitMQ? | A6 | ✅ |
+| Qual a diferença entre evento de domínio e evento de integração? | A6 | ✅ |
 | Como rastrear uma requisição entre vários microsserviços? | D | ✅ |
 | Por que o UserManager não usa o Keycloak diretamente? | B | ⏳ |
 | Como funciona o JIT provisioning idempotente? | B | ⏳ |
@@ -36,7 +37,7 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 ## Ordem escolhida (intercalada)
 
 ```text
-A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D ✅ → C ✅ → A5 ✅ → A6 → B → E
+A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D ✅ → C ✅ → A5 ✅ → A6 ✅ → B → E
 ```
 
 Por quê:
@@ -61,11 +62,12 @@ Por quê:
 - [x] **A4 — Concorrência na Outbox**
   Reserva por tempo (lease): `ClaimPendingAsync` grava `LockedUntil = now() + 30 s` num único `UPDATE ... WHERE Id IN (SELECT ... FOR UPDATE SKIP LOCKED) RETURNING *`; a publicação acontece fora da transação. Worker que morre libera a carta quando o lease vence. Testes com Postgres real (Testcontainers); ponta a ponta com 2 instâncias da API: antes 40 duplicatas em 40 cartas, depois 20/20 sem sobreposição.
 - [x] **A5 — MassTransit, retry com backoff e estado `Failed`**
-  - **Troca para MassTransit 8.5** (`d5e6141`): contrato compartilhado `Audit.Contracts.AuditEventOccurred`; o UserManager publica por `IAuditEventPublisher` → `IPublishEndpoint` com a **bus outbox do EF Core** (tabelas `OutboxMessage`/`OutboxState`/`InboxState`, gravadas na mesma transação do agregado); `eventId` = `EventId` do evento de domínio (também `MessageId`). Publish com `mandatory`: sem fila ligada a mensagem fica na Outbox e é reenviada (provado por teste). Migration troca a tabela antiga e **aborta se houver cartas pendentes**. AuditService com `IConsumer<AuditEventOccurred>`. Trace ponta a ponta mantido (`outbox send` → `outbox process` → `send` → `receive`/`process`).
+  - **Troca para MassTransit 8.5** (`d5e6141`): contrato compartilhado `Audit.Contracts.AuditEventOccurred`; o UserManager publica por `IAuditEventPublisher` → `IPublishEndpoint` com a **bus outbox do EF Core** (tabelas `OutboxMessage`/`OutboxState`/`InboxState`, gravadas na mesma transação do agregado); `eventId` = `EventId` do evento de domínio (no A5 também era o `MessageId`; deixou de ser no A6). Publish com `mandatory`: sem fila ligada a mensagem fica na Outbox e é reenviada (provado por teste). Migration troca a tabela antiga e **aborta se houver cartas pendentes**. AuditService com `IConsumer<AuditEventOccurred>`. Trace ponta a ponta mantido (`outbox send` → `outbox process` → `send` → `receive`/`process`).
   - **Resiliência do consumidor** (`66c338e`): retry em memória (1s, 5s, 15s, 30s); evento inválido ou fora do contrato vai direto, sem retry. Esgotou → fila `audit_events_error` com o motivo nos cabeçalhos `MT-Fault-*` — é o estado **`Failed`** escolhido (opção (a): fica guardado com o motivo e é reprocessado à mão). Reprocesso pelo **Move messages** do painel (plugin shovel no compose; passo a passo no README). Worker sobe antes do RabbitMQ e conecta quando ele aparece (teste com container na porta fixa). Ponta a ponta: Mongo parado → `TimeoutException` → `_error` com `RetryCount = 4` após ~3,5 min → Mongo de volta → Move → gravado.
   - **Limpeza**: remove `TestEventPublisher` (publicava JSON cru no `audit_exchange`, que não existe mais) a política de escrita do Polly e as classes `AuditEventBase`/`UserCreatedEvent`... sem uso.
-- [ ] **A6 — Integration events vs. auditoria**
-  O produtor publica eventos de integração próprios (`UserCreated`...); o AuditService assina. Remove o acoplamento entre o UserManager e o contrato de auditoria (`AuditEventOccurred`).
+- [x] **A6 — Integration events vs. auditoria** (migração expand/contract em dois commits)
+  - **A6.1 — Expand** (`5b2e76d`): novo projeto `UserManager.Contracts` com `UserCreated`/`UserUpdated`/`UserDeleted` e `ContactCreated`/`ContactUpdated`/`ContactDeleted` (o contrato é de quem publica). Os handlers da Application traduzem evento de domínio → evento de integração e publicam por `IIntegrationEventPublisher`; o UserManager não conhece mais a auditoria. O AuditService assina os 6 eventos (`UserEventsConsumer`, `ContactEventsConsumer`) e decide sozinho o formato do log (`IntegrationEventMapper`, mesmo formato no Mongo de antes). O consumidor antigo de `AuditEventOccurred` ficou ligado para as mensagens em trânsito. `OccurredAt` virou `DateTimeOffset`.
+  - **A6.2 — Contract**: depois de confirmar o dreno (Outbox e filas vazias), remove `Audit.Contracts`, o consumidor e o mapeador antigos, e apaga do RabbitMQ local o exchange `Audit.Contracts:AuditEventOccurred` (o MassTransit não remove bindings sozinho). Testes de retry/erro/trace migrados para os eventos novos; novo teste trava que tipo não assinado vai para `audit_events_skipped`. Ponta a ponta: criar usuário → criar, alterar e excluir contato → excluir usuário gera 5 logs no mesmo formato de antes.
 
 ### Frente D — Observabilidade
 
@@ -101,12 +103,14 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | `MongoDbContext` cria os índices de forma síncrona no construtor do singleton: com o Mongo fora, cada tentativa bloqueia uma thread ~30 s (e o DI tenta de novo a cada tentativa) | `MongoDbContext` | junto do item acima |
 | Desligar o Worker no meio de um retry não foi testado (intervalo + tentativa em andamento passam do `ShutdownTimeout` padrão de 30 s); fila clássica sem `delivery-limit`: mensagem que derruba o processo volta para sempre | AuditService / RabbitMQ | avaliar com quorum queues (o compose usa `rabbitmq:3-management`, 3.13; no 4.x o `delivery-limit` padrão é 20) |
 | Produtor: mensagem sem rota (nenhuma fila ligada) fica na Outbox e é retentada sem limite (log de erro a cada ~1 s, `QueryDelay`), sem estado `Failed` nem alerta. Intencional (não perde o evento), mas invisível sem monitorar a tabela `OutboxMessage` | `UserManager` `MessagingExtensions` | quando houver alertas (Grafana) |
-| Fila `audit_events_error` sem alerta de tamanho | AuditService | quando houver alertas (Grafana) |
-| Com várias instâncias da API (cada uma com o serviço de entrega da Outbox), a ordem global de publicação não é garantida | Outbox | A6 |
+| Filas `audit_events_error` e `audit_events_skipped` sem alerta de tamanho | AuditService | quando houver alertas (Grafana) |
+| Com várias instâncias da API (cada uma com o serviço de entrega da Outbox), a ordem global de publicação não é garantida | Outbox | quando surgir um consumidor que dependa de ordem (hoje a auditoria grava o horário do evento, não a ordem de chegada) |
+| `performedBy` da auditoria é sempre `"system"`: os eventos de integração ainda não carregam quem fez a ação | `IntegrationEventMapper` / contratos | B (o `sub` do Keycloak entra nos eventos como campo **opcional**) |
+| AuditService referencia o projeto `UserManager.Contracts` (acoplamento de compilação entre serviços) | `AuditService.Infrastructure.csproj` | se os serviços forem para repositórios separados (vira pacote NuGet) |
 | Pacotes com vulnerabilidade conhecida: `SharpCompress`/`Snappier` (via MongoDB.Driver), `Microsoft.OpenApi` (Api) | AuditService | manutenção |
 | Vulnerabilidades em dependências de dev do frontend (`npm audit`) | `frontend` | E |
 | Tabela `InboxState` criada sem uso (exigida pela FK do `OutboxMessage` do MassTransit; o produtor não consome) | `UserManagerDbContext` | se um dia o UserManager consumir mensagens |
-| Teste de partida do Worker usa porta fixa (`FreeTcpPort`) e `localhost`: corrida rara de porta e não roda com Docker remoto | `AuditEventConsumerStartupTests` | quando houver CI |
+| Teste de partida do Worker usa porta fixa (`FreeTcpPort`) e `localhost`: corrida rara de porta e não roda com Docker remoto | `AuditConsumersStartupTests` | quando houver CI |
 | Seção "Rodar" do CLAUDE.md e passo a passo de ambiente zerado | docs | quando conveniente |
 | MongoDB sem spans (driver 3.6 sem suporte nativo a OpenTelemetry) | AuditService | quando o driver suportar |
 | `AuditService.Api` e `AuthService` sem OpenTelemetry | AuditService.Api, AuthService | B |
@@ -130,14 +134,19 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | ~~Outbox implementada à mão~~ → **MassTransit 8** (bus outbox do EF Core, retry, fila `_error`) desde A5 | A1–A4 à mão serviram para entender o mecanismo; depois o usuário preferiu menos código próprio e o padrão de mercado (2026-11-01). v8 é Apache 2.0 com suporte até o fim de 2026; a v9 é comercial (ver débito) |
 | Entrega da Outbox continua no processo da API | isolar em processo próprio é válido, mas grande demais por enquanto |
 | Testes de infraestrutura com Testcontainers (RabbitMQ e Postgres reais) | mock não reproduz `basic.return`, ack de broker nem a transação da Outbox |
-| Contrato compartilhado num projeto (`Services/Shared/Audit.Contracts`) | o MassTransit roteia pelo nome completo do tipo (`Audit.Contracts:AuditEventOccurred`); um projeto só evita os dois lados divergirem |
+| **Evento de domínio ≠ evento de integração** (A6) | o de domínio é interno e pode mudar à vontade; o de integração é um contrato público com outros serviços. O handler traduz um no outro, então o domínio evolui sem quebrar quem escuta |
+| Contrato de integração é **de quem publica** (`UserManager.Contracts`), não de quem consome | o UserManager anuncia fatos sem saber quem escuta; um serviço novo (ex.: e-mail) só assina, sem mudar o UserManager. Mesmo modelo do dotnet/eShop. Substituiu o `Audit.Contracts` do A5, que fazia o UserManager "falar auditoria" |
+| Regras de evolução do contrato publicado | nunca renomear tipo nem namespace (o MassTransit roteia por `UserManager.Contracts:UserCreated`); campo novo sempre **opcional** (um `required` novo faz o consumidor rejeitar mensagens antigas); remover campo só com expand/contract |
+| Trocas de contrato em **expand/contract** | primeiro o consumidor passa a entender os dois formatos e o produtor muda; depois de confirmar o dreno, remove-se o formato antigo. Nenhuma mensagem em trânsito se perde |
+| `MessageId` gerado pelo MassTransit, não mais igual ao `EventId` | a idempotência continua pelo índice único em `eventId` no Mongo. Forçar o `MessageId` pediria passar o `eventId` à porta (`PublishAsync(evento, eventId, ct)`, redundante com o corpo) ou uma interface nos contratos marcada com `[ExcludeFromTopology]` (o que puxa o MassTransit para o projeto de contratos). Custo aceito: o Inbox do MassTransit, se um dia ligado, não deduplicaria uma republicação do mesmo evento |
+| `OccurredAt` como `DateTimeOffset` nos contratos | instante exato com fuso explícito; `DateTime` sem `Kind` seria lido como horário local pelo driver do Mongo |
 | Publish com **`mandatory`** (filtro de publish no RabbitMQ) | sem isso o broker descarta em silêncio a mensagem sem fila ligada e a Outbox a dá por entregue (regressão achada na revisão do A5); com `mandatory` ela volta e fica na Outbox |
 | Falha esgotada → fila `audit_events_error` do MassTransit (substitui a DLX por policy de A3.2) | o próprio MassTransit move a mensagem, com motivo, tipo da exceção, stack e número de retentativas nos cabeçalhos `MT-Fault-*`; não há `x-death` |
 | Retry **em memória** no consumidor (1s, 5s, 15s, 30s), sem redelivery agendado | cobre quedas curtas sem plugin; redelivery agendado exige `rabbitmq_delayed_message_exchange`. Quedas longas caem no `_error` = estado `Failed` da opção (a), reprocessado à mão |
 | Evento inválido lança `InvalidAuditEventException`, ignorada pelo retry | no MassTransit a falha de um consumidor é sinalizada por exceção; aqui não é fluxo de negócio, é violação de contrato vinda de outro serviço |
 | Reprocesso manual pelo **Move messages** (plugin shovel) | ferramenta do próprio RabbitMQ, sem código; o consumidor é idempotente (índice único em `eventId`), então mover de novo não duplica |
 | Arquivo de definições do RabbitMQ importado no boot (usuário `dev`) | configuração do broker como código; o nó não cria o usuário padrão quando importa definições. A policy de DLX saiu em A5 |
-| Porta `IAuditEventPublisher.PublishAsync` mantém o nome | convenção do MassTransit; que a mensagem só sai depois do `SaveChanges` é garantido pelo `UnitOfWork` e provado por teste (sem `SaveChanges`, nada chega ao broker) |
+| Porta `IIntegrationEventPublisher.PublishAsync` (antes `IAuditEventPublisher`) se chama "publicar", não "enfileirar" | convenção do MassTransit; que a mensagem só sai depois do `SaveChanges` é garantido pelo `UnitOfWork` e provado por teste (sem `SaveChanges`, nada chega ao broker) |
 | Migration de troca da Outbox **aborta se houver cartas pendentes** na tabela antiga | dropar a tabela perderia eventos em trânsito; a regra é esvaziar a Outbox com a versão anterior antes de migrar |
 | (até A4) Concorrência da Outbox por **lease** (`LockedUntil`) + `FOR UPDATE SKIP LOCKED`, com `now()` do Postgres | transação curta, sem segurar tranca durante a publicação; escala com N Workers. No MassTransit o equivalente é o lock do `OutboxState` (`UsePostgres`) |
 | (até A4/D) Migration aplicada **antes** do código novo (expand → deploy). A troca do A5 é exceção: não é aditiva (dropa `OutboxMessages`), então a ordem é parar a API antiga com a Outbox vazia, migrar e subir a nova | com `LockedUntil` (A4) e `TraceParent` (D) mapeadas, o `INSERT` e o claim (`RETURNING *`) da Outbox incluem as colunas; código novo em banco sem a migration falha ao criar/alterar usuário. A mudança é aditiva e nula, então o código antigo convive com o esquema novo |

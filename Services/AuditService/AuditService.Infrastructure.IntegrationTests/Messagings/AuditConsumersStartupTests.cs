@@ -1,7 +1,5 @@
 using System.Net;
 using System.Net.Sockets;
-using System.Text.Json;
-using Audit.Contracts;
 using AuditService.Domain.Interfaces.Repositories;
 using AuditService.Infrastructure.IntegrationTests.TestDoubles;
 using AuditService.Infrastructure.Messagings;
@@ -9,10 +7,11 @@ using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.RabbitMq;
+using UserManager.Contracts;
 
 namespace AuditService.Infrastructure.IntegrationTests.Messagings;
 
-public sealed class AuditEventConsumerStartupTests
+public sealed class AuditConsumersStartupTests
 {
     private const string UserName = "test";
     private const string Password = "test";
@@ -71,14 +70,12 @@ public sealed class AuditEventConsumerStartupTests
         return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
-    private static AuditEventOccurred SampleMessage() => new()
+    private static UserCreated SampleMessage() => new()
     {
         EventId = Guid.NewGuid(),
-        EventType = "user.created",
-        AggregateId = Guid.NewGuid().ToString(),
-        AggregateType = "User",
-        PerformedBy = "system",
-        PerformedAt = DateTime.UtcNow,
-        Payload = JsonSerializer.SerializeToElement(new { UserName = "Ana", UserEmail = "ana@example.com" })
+        OccurredAt = DateTimeOffset.UtcNow,
+        UserId = Guid.NewGuid(),
+        Name = "Ana",
+        Email = "ana@example.com"
     };
 }

@@ -11,7 +11,6 @@ public static class MessagingExtensions
 
         services.AddMassTransit(bus =>
         {
-            bus.AddConsumer<AuditEventConsumer>();
             bus.AddConsumer<UserEventsConsumer>();
             bus.AddConsumer<ContactEventsConsumer>();
 
@@ -31,7 +30,6 @@ public static class MessagingExtensions
                         retry.Ignore<InvalidAuditEventException>();
                         retry.Intervals(settings.GetRetryIntervals());
                     });
-                    endpoint.ConfigureConsumer<AuditEventConsumer>(context);
                     endpoint.ConfigureConsumer<UserEventsConsumer>(context);
                     endpoint.ConfigureConsumer<ContactEventsConsumer>(context);
                 });

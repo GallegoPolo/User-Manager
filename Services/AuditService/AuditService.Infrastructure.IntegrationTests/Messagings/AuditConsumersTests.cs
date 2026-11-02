@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using Audit.Contracts;
 using AuditService.Domain.Enums;
 using AuditService.Domain.Interfaces.Repositories;
 using AuditService.Infrastructure.IntegrationTests.TestDoubles;
@@ -16,7 +15,7 @@ using UserManager.Contracts;
 
 namespace AuditService.Infrastructure.IntegrationTests.Messagings;
 
-public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
+public sealed class AuditConsumersTests : IClassFixture<RabbitMqFixture>
 {
     private const string FaultMessageHeader = "MT-Fault-Message";
     private const string FaultRetryCountHeader = "MT-Fault-RetryCount";
@@ -27,7 +26,7 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
     private readonly RabbitMqFixture _rabbitMq;
     private readonly RabbitMqSettings _settings;
 
-    public AuditEventConsumerTests(RabbitMqFixture rabbitMq)
+    public AuditConsumersTests(RabbitMqFixture rabbitMq)
     {
         _rabbitMq = rabbitMq;
         _settings = rabbitMq.CreateSettings($"audit_events_{Guid.NewGuid():N}");
@@ -36,25 +35,11 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
 
     private string ErrorQueueName => $"{_settings.QueueName}_error";
 
-    [Fact]
-    public async Task ValidMessage_IsSaved()
-    {
-        // Arrange
-        var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 0);
-        await using var bus = await StartBusAsync(repository);
-        var message = ValidMessage();
-
-        // Act
-        await bus.Bus.Publish(message);
-
-        // Assert
-        var saved = await repository.WaitForSavedAsync(WaitTimeout);
-        Assert.Equal(message.EventId, saved.EventId);
-    }
+    private string SkippedQueueName => $"{_settings.QueueName}_skipped";
 
     public static TheoryData<object, EEventType> IntegrationEvents()
     {
-        var occurredAt = DateTime.UtcNow;
+        var occurredAt = DateTimeOffset.UtcNow;
         return new TheoryData<object, EEventType>
         {
             { new UserCreated { EventId = Guid.NewGuid(), OccurredAt = occurredAt, UserId = Guid.NewGuid(), Name = "Ana", Email = "ana@example.com" }, EEventType.UserCreated },
@@ -83,26 +68,33 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
     }
 
     [Fact]
-    public async Task InvalidMessage_GoesToErrorQueueWithReasonAndIsNotSaved()
+    public async Task InvalidEvent_GoesToErrorQueueWithReasonAndIsNotSaved()
     {
         // Arrange
         var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 0);
         await using var bus = await StartBusAsync(repository);
 
         // Act
-        await bus.Bus.Publish(ValidMessage() with { EventType = "user.archived" });
+        await bus.Bus.Publish(new ContactCreated
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTimeOffset.UtcNow,
+            ContactId = Guid.Empty,
+            OwnerId = Guid.NewGuid(),
+            Name = "Bia"
+        });
 
         // Assert
         var faulted = await WaitForMessageAsync(ErrorQueueName);
         var headers = Assert.IsAssignableFrom<IDictionary<string, object?>>(faulted.BasicProperties.Headers);
 
-        Assert.Contains("user.archived", ReadString(headers, FaultMessageHeader));
+        Assert.Contains("ContactId", ReadString(headers, FaultMessageHeader));
         Assert.True(WasNotRetried(headers));
         Assert.Equal(0, repository.AddCallCount);
     }
 
     [Fact]
-    public async Task MessageMissingRequiredField_GoesToErrorQueueWithoutRetry()
+    public async Task EventMissingRequiredField_GoesToErrorQueueWithoutRetry()
     {
         // Arrange
         var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 0);
@@ -112,16 +104,36 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         await PublishRawEnvelopeAsync(new
         {
             messageId = Guid.NewGuid(),
-            messageType = new[] { "urn:message:Audit.Contracts:AuditEventOccurred" },
-            message = new { eventId = Guid.NewGuid(), aggregateId = "x", aggregateType = "User", performedBy = "system", performedAt = DateTime.UtcNow }
+            messageType = new[] { "urn:message:UserManager.Contracts:UserCreated" },
+            message = new { eventId = Guid.NewGuid(), occurredAt = DateTimeOffset.UtcNow, userId = Guid.NewGuid(), email = "ana@example.com" }
         });
 
         // Assert
         var faulted = await WaitForMessageAsync(ErrorQueueName);
         var headers = Assert.IsAssignableFrom<IDictionary<string, object?>>(faulted.BasicProperties.Headers);
 
-        Assert.Contains("eventType", ReadString(headers, FaultMessageHeader));
+        Assert.Contains("'name'", ReadString(headers, FaultMessageHeader));
         Assert.True(WasNotRetried(headers), ReadString(headers, FaultRetryCountHeader));
+        Assert.Equal(0, repository.AddCallCount);
+    }
+
+    [Fact]
+    public async Task UnsubscribedMessageType_GoesToSkippedQueueAndIsNotSaved()
+    {
+        // Arrange
+        var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 0);
+        await using var bus = await StartBusAsync(repository);
+
+        // Act
+        await PublishRawEnvelopeAsync(new
+        {
+            messageId = Guid.NewGuid(),
+            messageType = new[] { "urn:message:UserManager.Contracts:UserArchived" },
+            message = new { eventId = Guid.NewGuid() }
+        });
+
+        // Assert
+        await WaitForMessageAsync(SkippedQueueName);
         Assert.Equal(0, repository.AddCallCount);
     }
 
@@ -131,14 +143,14 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         // Arrange
         var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 2);
         await using var bus = await StartBusAsync(repository);
-        var message = ValidMessage();
+        var userCreated = SampleUserCreated();
 
         // Act
-        await bus.Bus.Publish(message);
+        await bus.Bus.Publish(userCreated);
 
         // Assert
         var saved = await repository.WaitForSavedAsync(WaitTimeout);
-        Assert.Equal(message.EventId, saved.EventId);
+        Assert.Equal(userCreated.EventId, saved.EventId);
         Assert.Equal(3, repository.AddCallCount);
     }
 
@@ -150,7 +162,7 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         await using var bus = await StartBusAsync(repository);
 
         // Act
-        await bus.Bus.Publish(ValidMessage());
+        await bus.Bus.Publish(SampleUserCreated());
 
         // Assert
         var faulted = await WaitForMessageAsync(ErrorQueueName);
@@ -162,7 +174,7 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
     }
 
     [Fact]
-    public async Task ValidMessage_IsProcessedInsidePublisherTrace()
+    public async Task Event_IsProcessedInsidePublisherTrace()
     {
         // Arrange
         using var listener = new ActivitySourceListener(DiagnosticHeaders.DefaultListenerName);
@@ -171,7 +183,7 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         using var publisherActivity = new Activity("publisher").SetIdFormat(ActivityIdFormat.W3C).Start();
 
         // Act
-        await bus.Bus.Publish(ValidMessage());
+        await bus.Bus.Publish(SampleUserCreated());
         publisherActivity.Stop();
 
         // Assert
@@ -195,15 +207,13 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         return new RunningBus(services);
     }
 
-    private static AuditEventOccurred ValidMessage() => new()
+    private static UserCreated SampleUserCreated() => new()
     {
         EventId = Guid.NewGuid(),
-        EventType = "user.created",
-        AggregateId = Guid.NewGuid().ToString(),
-        AggregateType = "User",
-        PerformedBy = "system",
-        PerformedAt = DateTime.UtcNow,
-        Payload = JsonSerializer.SerializeToElement(new { UserName = "Ana", UserEmail = "ana@example.com" })
+        OccurredAt = DateTimeOffset.UtcNow,
+        UserId = Guid.NewGuid(),
+        Name = "Ana",
+        Email = "ana@example.com"
     };
 
     private async Task<BasicGetResult> WaitForMessageAsync(string queueName)

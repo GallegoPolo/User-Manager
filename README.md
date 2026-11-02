@@ -41,7 +41,7 @@ Fluxo resumido do Create/Update/Delete de usuário:
 
 1. UserManager persiste o usuário no PostgreSQL  
 2. Dispara Domain Event (MediatR)  
-3. Handler de auditoria publica pelo **MassTransit**, que grava a mensagem na **Outbox** (tabela `OutboxMessage`) na mesma transação  
+3. Um handler traduz o Domain Event num **evento de integração** (`UserCreated`, `ContactDeleted`... em `UserManager.Contracts`) e publica pelo **MassTransit**, que grava a mensagem na **Outbox** (tabela `OutboxMessage`) na mesma transação. O UserManager não sabe quem escuta  
 4. O serviço de entrega do MassTransit lê a Outbox e publica no **RabbitMQ**  
 5. **Audit Worker** consome (com retry) e salva o log no **MongoDB**  
 6. Frontend consulta a trilha pela **AuditService API**
@@ -122,7 +122,7 @@ Frontend: http://localhost:5173
 
 ### Mensagens de auditoria com falha (reprocesso manual)
 
-O Audit Worker tenta gravar cada evento até 5 vezes, esperando 1s, 5s, 15s e 30s entre as tentativas (a mensagem fica retida em memória nesse meio-tempo). Com o MongoDB fora do ar, cada tentativa ainda leva ~30s até o driver desistir, então o ciclo todo dura uns 3–4 minutos. Se todas falharem, a mensagem vai para a fila **`audit_events_error`** com o motivo nos cabeçalhos `MT-Fault-*` (tipo da exceção, mensagem, stack trace, número de retentativas). Evento inválido (tipo desconhecido, campo obrigatório vazio ou ausente, JSON fora do contrato) vai direto, sem retry.
+O Audit Worker tenta gravar cada evento até 5 vezes, esperando 1s, 5s, 15s e 30s entre as tentativas (a mensagem fica retida em memória nesse meio-tempo). Com o MongoDB fora do ar, cada tentativa ainda leva ~30s até o driver desistir, então o ciclo todo dura uns 3–4 minutos. Se todas falharem, a mensagem vai para a fila **`audit_events_error`** com o motivo nos cabeçalhos `MT-Fault-*` (tipo da exceção, mensagem, stack trace, número de retentativas). Evento inválido (id vazio, nome em branco, campo obrigatório ausente, JSON fora do contrato) vai direto, sem retry. Uma mensagem de um tipo que nenhum consumidor assina vai para outra fila, **`audit_events_skipped`**.
 
 Os intervalos podem ser trocados em `RabbitMq:RetryIntervals` (formato `"00:00:05"`); a lista configurada substitui a padrão.
 
