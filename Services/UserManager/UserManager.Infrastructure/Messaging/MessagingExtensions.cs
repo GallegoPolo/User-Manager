@@ -9,9 +9,9 @@ public static class MessagingExtensions
 {
     private static readonly TimeSpan OutboxQueryDelay = TimeSpan.FromSeconds(1);
 
-    public static IServiceCollection AddAuditMessaging(this IServiceCollection services, RabbitMqSettings settings)
+    public static IServiceCollection AddIntegrationMessaging(this IServiceCollection services, RabbitMqSettings settings)
     {
-        services.AddScoped<IAuditEventPublisher, MassTransitAuditEventPublisher>();
+        services.AddScoped<IIntegrationEventPublisher, MassTransitIntegrationEventPublisher>();
 
         services.AddMassTransit(bus =>
         {

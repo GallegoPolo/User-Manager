@@ -5,11 +5,15 @@ namespace AuditService.Infrastructure.Messagings;
 
 public static class MessagingExtensions
 {
-    public static IServiceCollection AddAuditEventConsumer(this IServiceCollection services, RabbitMqSettings settings)
+    public static IServiceCollection AddAuditConsumers(this IServiceCollection services, RabbitMqSettings settings)
     {
+        services.AddScoped<AuditLogRecorder>();
+
         services.AddMassTransit(bus =>
         {
             bus.AddConsumer<AuditEventConsumer>();
+            bus.AddConsumer<UserEventsConsumer>();
+            bus.AddConsumer<ContactEventsConsumer>();
 
             bus.UsingRabbitMq((context, rabbit) =>
             {
@@ -28,6 +32,8 @@ public static class MessagingExtensions
                         retry.Intervals(settings.GetRetryIntervals());
                     });
                     endpoint.ConfigureConsumer<AuditEventConsumer>(context);
+                    endpoint.ConfigureConsumer<UserEventsConsumer>(context);
+                    endpoint.ConfigureConsumer<ContactEventsConsumer>(context);
                 });
             });
         });

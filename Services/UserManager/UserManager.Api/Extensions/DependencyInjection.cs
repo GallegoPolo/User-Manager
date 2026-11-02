@@ -60,7 +60,7 @@ namespace UserManager.Api.Extensions
         public static IServiceCollection AddMessaging(this IServiceCollection services, ConfigurationManager configuration)
         {
             var rabbitMqSettings = configuration.GetSection("RabbitMq").Get<RabbitMqSettings>() ?? new RabbitMqSettings();
-            return services.AddAuditMessaging(rabbitMqSettings);
+            return services.AddIntegrationMessaging(rabbitMqSettings);
         }
 
         public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)

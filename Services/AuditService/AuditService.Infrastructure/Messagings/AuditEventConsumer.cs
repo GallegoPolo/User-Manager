@@ -1,33 +1,17 @@
-﻿using Audit.Contracts;
-using AuditService.Domain.Interfaces.Repositories;
+using Audit.Contracts;
 using MassTransit;
-using Microsoft.Extensions.Logging;
 
 namespace AuditService.Infrastructure.Messagings;
 
 public sealed class AuditEventConsumer : IConsumer<AuditEventOccurred>
 {
-    private readonly IAuditLogRepository _repository;
-    private readonly ILogger<AuditEventConsumer> _logger;
+    private readonly AuditLogRecorder _recorder;
 
-    public AuditEventConsumer(IAuditLogRepository repository, ILogger<AuditEventConsumer> logger)
+    public AuditEventConsumer(AuditLogRecorder recorder)
     {
-        _repository = repository;
-        _logger = logger;
+        _recorder = recorder;
     }
 
-    public async Task Consume(ConsumeContext<AuditEventOccurred> context)
-    {
-        var mapped = AuditEventMapper.ToAuditLog(context.Message);
-        if (!mapped.IsSuccess)
-            throw new InvalidAuditEventException(mapped.Error!);
-
-        var auditLog = mapped.Data!;
-        var wasSaved = await _repository.AddAsync(auditLog, context.CancellationToken);
-
-        if (wasSaved)
-            _logger.LogInformation("Evento processado com sucesso: {EventId} | Tipo: {EventType}", auditLog.EventId, auditLog.EventType);
-        else
-            _logger.LogInformation("Evento duplicado ignorado: {EventId}", auditLog.EventId);
-    }
+    public Task Consume(ConsumeContext<AuditEventOccurred> context) =>
+        _recorder.RecordAsync(AuditEventMapper.ToAuditLog(context.Message), context.CancellationToken);
 }

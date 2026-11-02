@@ -4,17 +4,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
-using UserManager.Application.Events;
 using UserManager.Application.Events.Interfaces;
+using UserManager.Contracts;
 using UserManager.Infrastructure.IntegrationTests.Fixtures;
 using UserManager.Infrastructure.Messaging;
 using UserManager.Infrastructure.Persistence;
 
 namespace UserManager.Infrastructure.IntegrationTests.Messaging;
 
-public sealed class AuditEventOutboxUnroutableTests : IClassFixture<PostgresFixture>, IClassFixture<RabbitMqFixture>, IAsyncLifetime
+public sealed class IntegrationEventOutboxUnroutableTests : IClassFixture<PostgresFixture>, IClassFixture<RabbitMqFixture>, IAsyncLifetime
 {
-    private const string AuditEventExchange = "Audit.Contracts:AuditEventOccurred";
+    private const string UserCreatedExchange = "UserManager.Contracts:UserCreated";
     private static readonly TimeSpan DeliveryAttemptWindow = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
@@ -23,7 +23,7 @@ public sealed class AuditEventOutboxUnroutableTests : IClassFixture<PostgresFixt
     private readonly RabbitMqFixture _rabbitMq;
     private ServiceProvider _services = null!;
 
-    public AuditEventOutboxUnroutableTests(PostgresFixture postgres, RabbitMqFixture rabbitMq)
+    public IntegrationEventOutboxUnroutableTests(PostgresFixture postgres, RabbitMqFixture rabbitMq)
     {
         _postgres = postgres;
         _rabbitMq = rabbitMq;
@@ -34,7 +34,7 @@ public sealed class AuditEventOutboxUnroutableTests : IClassFixture<PostgresFixt
         _services = new ServiceCollection()
             .AddLogging()
             .AddDbContext<UserManagerDbContext>(options => options.UseNpgsql(_postgres.ConnectionString))
-            .AddAuditMessaging(_rabbitMq.CreateSettings())
+            .AddIntegrationMessaging(_rabbitMq.CreateSettings())
             .BuildServiceProvider();
 
         foreach (var hostedService in _services.GetServices<IHostedService>())
@@ -55,22 +55,24 @@ public sealed class AuditEventOutboxUnroutableTests : IClassFixture<PostgresFixt
     public async Task PublishAsync_WhenNoQueueIsBound_KeepsMessageInOutboxUntilAQueueIsBound()
     {
         // Arrange
-        var auditEvent = new AuditEvent(Guid.NewGuid(),
-                                        DateTime.UtcNow,
-                                        "user.created",
-                                        Guid.NewGuid().ToString(),
-                                        "User",
-                                        new UserCreatedAuditPayload("Ana", "ana@example.com"));
+        var userCreated = new UserCreated
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTime.UtcNow,
+            UserId = Guid.NewGuid(),
+            Name = "Ana",
+            Email = "ana@example.com"
+        };
 
         // Act
         await using (var scope = _services.CreateAsyncScope())
         {
-            await scope.ServiceProvider.GetRequiredService<IAuditEventPublisher>().PublishAsync(auditEvent, CancellationToken.None);
+            await scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>().PublishAsync(userCreated, CancellationToken.None);
             await scope.ServiceProvider.GetRequiredService<UserManagerDbContext>().SaveChangesAsync();
         }
 
         await Task.Delay(DeliveryAttemptWindow);
-        var keptWhileUnroutable = await IsStoredInOutboxAsync(auditEvent.EventId);
+        var keptWhileUnroutable = await IsStoredInOutboxAsync(userCreated.EventId);
         var queueName = await BindQueueAsync();
 
         // Assert
@@ -81,7 +83,7 @@ public sealed class AuditEventOutboxUnroutableTests : IClassFixture<PostgresFixt
     private async Task<bool> IsStoredInOutboxAsync(Guid eventId)
     {
         await using var context = _postgres.CreateContext();
-        return await context.Set<OutboxMessage>().AnyAsync(m => m.MessageId == eventId);
+        return await context.Set<OutboxMessage>().AnyAsync(m => m.Body.Contains(eventId.ToString()));
     }
 
     private async Task<string> BindQueueAsync()
@@ -91,7 +93,7 @@ public sealed class AuditEventOutboxUnroutableTests : IClassFixture<PostgresFixt
         await using var channel = await connection.CreateChannelAsync();
 
         await channel.QueueDeclareAsync(queueName, durable: false, exclusive: false, autoDelete: false);
-        await channel.QueueBindAsync(queueName, AuditEventExchange, routingKey: string.Empty);
+        await channel.QueueBindAsync(queueName, UserCreatedExchange, routingKey: string.Empty);
 
         return queueName;
     }

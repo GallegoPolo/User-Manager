@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
-using UserManager.Application.Events;
 using UserManager.Application.Events.Interfaces;
+using UserManager.Contracts;
 using UserManager.Infrastructure.IntegrationTests.Fixtures;
 using UserManager.Infrastructure.IntegrationTests.TestDoubles;
 using UserManager.Infrastructure.Messaging;
@@ -15,9 +15,9 @@ using UserManager.Infrastructure.Persistence;
 
 namespace UserManager.Infrastructure.IntegrationTests.Messaging;
 
-public sealed class AuditEventOutboxTests : IClassFixture<PostgresFixture>, IClassFixture<RabbitMqFixture>, IAsyncLifetime
+public sealed class IntegrationEventOutboxTests : IClassFixture<PostgresFixture>, IClassFixture<RabbitMqFixture>, IAsyncLifetime
 {
-    private const string AuditEventExchange = "Audit.Contracts:AuditEventOccurred";
+    private const string UserCreatedExchange = "UserManager.Contracts:UserCreated";
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
 
@@ -27,7 +27,7 @@ public sealed class AuditEventOutboxTests : IClassFixture<PostgresFixture>, ICla
     private ServiceProvider _services = null!;
     private IConnection _connection = null!;
 
-    public AuditEventOutboxTests(PostgresFixture postgres, RabbitMqFixture rabbitMq)
+    public IntegrationEventOutboxTests(PostgresFixture postgres, RabbitMqFixture rabbitMq)
     {
         _postgres = postgres;
         _rabbitMq = rabbitMq;
@@ -41,7 +41,7 @@ public sealed class AuditEventOutboxTests : IClassFixture<PostgresFixture>, ICla
         _services = new ServiceCollection()
             .AddLogging()
             .AddDbContext<UserManagerDbContext>(options => options.UseNpgsql(_postgres.ConnectionString))
-            .AddAuditMessaging(_rabbitMq.CreateSettings())
+            .AddIntegrationMessaging(_rabbitMq.CreateSettings())
             .BuildServiceProvider();
 
         foreach (var hostedService in _services.GetServices<IHostedService>())
@@ -63,29 +63,27 @@ public sealed class AuditEventOutboxTests : IClassFixture<PostgresFixture>, ICla
     public async Task PublishAsync_ThenSaveChanges_DeliversMessageToBroker()
     {
         // Arrange
-        var auditEvent = SampleAuditEvent();
+        var userCreated = SampleUserCreated();
 
         // Act
-        await PublishAsync(auditEvent, saveChanges: true);
+        await PublishAsync(userCreated, saveChanges: true);
 
         // Assert
-        var delivered = await WaitForDeliveryAsync(auditEvent.EventId);
+        var delivered = await WaitForDeliveryAsync(userCreated.EventId);
         var message = delivered.Envelope.GetProperty("message");
 
-        Assert.Equal(auditEvent.EventId, delivered.Envelope.GetProperty("messageId").GetGuid());
-        Assert.Equal("user.created", message.GetProperty("eventType").GetString());
-        Assert.Equal(auditEvent.AggregateId, message.GetProperty("aggregateId").GetString());
-        Assert.Equal("User", message.GetProperty("aggregateType").GetString());
-        Assert.Equal("system", message.GetProperty("performedBy").GetString());
-        Assert.Equal("Ana", message.GetProperty("payload").GetProperty("UserName").GetString());
+        Assert.Equal(["urn:message:UserManager.Contracts:UserCreated"], delivered.Envelope.GetProperty("messageType").EnumerateArray().Select(t => t.GetString()));
+        Assert.Equal(userCreated.UserId, message.GetProperty("userId").GetGuid());
+        Assert.Equal("Ana", message.GetProperty("name").GetString());
+        Assert.Equal("ana@example.com", message.GetProperty("email").GetString());
     }
 
     [Fact]
     public async Task PublishAsync_WithoutSaveChanges_DeliversNothing()
     {
         // Arrange
-        var discarded = SampleAuditEvent();
-        var committed = SampleAuditEvent();
+        var discarded = SampleUserCreated();
+        var committed = SampleUserCreated();
 
         // Act
         await PublishAsync(discarded, saveChanges: false);
@@ -101,42 +99,44 @@ public sealed class AuditEventOutboxTests : IClassFixture<PostgresFixture>, ICla
     {
         // Arrange
         using var listener = new ActivitySourceListener(DiagnosticHeaders.DefaultListenerName);
-        var auditEvent = SampleAuditEvent();
+        var userCreated = SampleUserCreated();
         using var request = new Activity("request").SetIdFormat(ActivityIdFormat.W3C).Start();
 
         // Act
-        await PublishAsync(auditEvent, saveChanges: true);
+        await PublishAsync(userCreated, saveChanges: true);
         request.Stop();
 
         // Assert
-        var delivered = await WaitForDeliveryAsync(auditEvent.EventId);
+        var delivered = await WaitForDeliveryAsync(userCreated.EventId);
         Assert.Contains(request.TraceId.ToString(), delivered.TraceParent);
     }
 
-    private async Task PublishAsync(AuditEvent auditEvent, bool saveChanges)
+    private async Task PublishAsync(UserCreated userCreated, bool saveChanges)
     {
         await using var scope = _services.CreateAsyncScope();
 
-        await scope.ServiceProvider.GetRequiredService<IAuditEventPublisher>().PublishAsync(auditEvent, CancellationToken.None);
+        await scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>().PublishAsync(userCreated, CancellationToken.None);
 
         if (saveChanges)
             await scope.ServiceProvider.GetRequiredService<UserManagerDbContext>().SaveChangesAsync();
     }
 
-    private static AuditEvent SampleAuditEvent() => new(Guid.NewGuid(),
-                                                         DateTime.UtcNow,
-                                                         "user.created",
-                                                         Guid.NewGuid().ToString(),
-                                                         "User",
-                                                         new UserCreatedAuditPayload("Ana", "ana@example.com"));
+    private static UserCreated SampleUserCreated() => new()
+    {
+        EventId = Guid.NewGuid(),
+        OccurredAt = DateTime.UtcNow,
+        UserId = Guid.NewGuid(),
+        Name = "Ana",
+        Email = "ana@example.com"
+    };
 
     private async Task BindTestQueueAsync()
     {
         await using var channel = await _connection.CreateChannelAsync();
 
-        await channel.ExchangeDeclareAsync(AuditEventExchange, ExchangeType.Fanout, durable: true);
+        await channel.ExchangeDeclareAsync(UserCreatedExchange, ExchangeType.Fanout, durable: true);
         await channel.QueueDeclareAsync(_queueName, durable: false, exclusive: false, autoDelete: false);
-        await channel.QueueBindAsync(_queueName, AuditEventExchange, routingKey: string.Empty);
+        await channel.QueueBindAsync(_queueName, UserCreatedExchange, routingKey: string.Empty);
     }
 
     private async Task<Delivery> WaitForDeliveryAsync(Guid eventId)

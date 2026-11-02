@@ -14,7 +14,7 @@ var rabbitMqSettings = builder.Configuration.GetSection("RabbitMq").Get<RabbitMq
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
-builder.Services.AddAuditEventConsumer(rabbitMqSettings);
+builder.Services.AddAuditConsumers(rabbitMqSettings);
 
 builder.AddObservability();
 

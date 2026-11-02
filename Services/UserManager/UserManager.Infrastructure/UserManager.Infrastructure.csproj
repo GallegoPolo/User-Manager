@@ -9,7 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="..\UserManager.Application\UserManager.Application.csproj" />
     <ProjectReference Include="..\UserManager.Domain\UserManager.Domain.csproj" />
-    <ProjectReference Include="..\..\Shared\Audit.Contracts\Audit.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Audit.Contracts;
+using AuditService.Domain.Enums;
 using AuditService.Domain.Interfaces.Repositories;
 using AuditService.Infrastructure.IntegrationTests.TestDoubles;
 using AuditService.Infrastructure.Messagings;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
+using UserManager.Contracts;
 
 namespace AuditService.Infrastructure.IntegrationTests.Messagings;
 
@@ -48,6 +50,36 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         // Assert
         var saved = await repository.WaitForSavedAsync(WaitTimeout);
         Assert.Equal(message.EventId, saved.EventId);
+    }
+
+    public static TheoryData<object, EEventType> IntegrationEvents()
+    {
+        var occurredAt = DateTime.UtcNow;
+        return new TheoryData<object, EEventType>
+        {
+            { new UserCreated { EventId = Guid.NewGuid(), OccurredAt = occurredAt, UserId = Guid.NewGuid(), Name = "Ana", Email = "ana@example.com" }, EEventType.UserCreated },
+            { new UserUpdated { EventId = Guid.NewGuid(), OccurredAt = occurredAt, UserId = Guid.NewGuid(), Name = "Ana", Email = "ana@example.com" }, EEventType.UserUpdated },
+            { new UserDeleted { EventId = Guid.NewGuid(), OccurredAt = occurredAt, UserId = Guid.NewGuid(), Name = "Ana", Email = "ana@example.com" }, EEventType.UserDeleted },
+            { new ContactCreated { EventId = Guid.NewGuid(), OccurredAt = occurredAt, ContactId = Guid.NewGuid(), OwnerId = Guid.NewGuid(), Name = "Bia" }, EEventType.ContactCreated },
+            { new ContactUpdated { EventId = Guid.NewGuid(), OccurredAt = occurredAt, ContactId = Guid.NewGuid(), OwnerId = Guid.NewGuid(), Name = "Bia" }, EEventType.ContactUpdated },
+            { new ContactDeleted { EventId = Guid.NewGuid(), OccurredAt = occurredAt, ContactId = Guid.NewGuid(), OwnerId = Guid.NewGuid(), Name = "Bia" }, EEventType.ContactDeleted }
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(IntegrationEvents))]
+    public async Task IntegrationEvent_IsSavedWithItsEventType(object integrationEvent, EEventType expectedEventType)
+    {
+        // Arrange
+        var repository = new FakeAuditLogRepository(failuresBeforeSuccess: 0);
+        await using var bus = await StartBusAsync(repository);
+
+        // Act
+        await bus.Bus.Publish(integrationEvent, integrationEvent.GetType());
+
+        // Assert
+        var saved = await repository.WaitForSavedAsync(WaitTimeout);
+        Assert.Equal(expectedEventType, saved.EventType);
     }
 
     [Fact]
@@ -152,7 +184,7 @@ public sealed class AuditEventConsumerTests : IClassFixture<RabbitMqFixture>
         var services = new ServiceCollection()
             .AddLogging()
             .AddSingleton<IAuditLogRepository>(repository)
-            .AddAuditEventConsumer(_settings)
+            .AddAuditConsumers(_settings)
             .BuildServiceProvider();
 
         foreach (var hostedService in services.GetServices<IHostedService>())

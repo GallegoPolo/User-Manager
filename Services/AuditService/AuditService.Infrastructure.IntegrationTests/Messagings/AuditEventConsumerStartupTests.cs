@@ -27,7 +27,7 @@ public sealed class AuditEventConsumerStartupTests
         await using var services = new ServiceCollection()
             .AddLogging()
             .AddSingleton<IAuditLogRepository>(repository)
-            .AddAuditEventConsumer(new RabbitMqSettings
+            .AddAuditConsumers(new RabbitMqSettings
             {
                 HostName = "localhost",
                 Port = (ushort)port,
