@@ -1,7 +1,6 @@
 ﻿using MediatR;
 using UserManager.Application.Common;
 using UserManager.Application.UseCases.Users.Commands;
-using UserManager.Domain.Common;
 using UserManager.Domain.Interfaces;
 
 namespace UserManager.Application.UseCases.Users.Handlers
@@ -22,9 +21,9 @@ namespace UserManager.Application.UseCases.Users.Handlers
             var user = await _repository.GetByIdAsync(command.Id);
 
             if (user == null)
-                return Result<bool>.Failure(new ValidationError("Id", "User not found"));
+                return Result<bool>.NotFound("Id", "Usuário não encontrado.");
 
-            user.Delete(); 
+            user.Delete();
 
             await _repository.DeleteAsync(user);
             await _unitOfWork.SaveChangesAsync(cancellationToken);

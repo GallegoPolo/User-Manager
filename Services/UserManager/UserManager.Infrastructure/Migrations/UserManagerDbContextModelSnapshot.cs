@@ -237,6 +237,11 @@ namespace UserManager.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("IdentityProviderId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -244,7 +249,7 @@ namespace UserManager.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
+                    b.HasIndex("IdentityProviderId")
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);

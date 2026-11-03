@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
-using UserManager.Domain.ValueObjects;
 using UserManager.Infrastructure.Persistence;
 
 namespace UserManager.Infrastructure.Repositories
@@ -20,11 +19,6 @@ namespace UserManager.Infrastructure.Repositories
             await _context.Users.AddAsync(user);
         }
 
-        public async Task UpdateAsync(User user)
-        {
-            _context.Users.Update(user);
-        }
-
         public Task DeleteAsync(User user)
         {
             _context.Users.Remove(user);
@@ -36,6 +30,11 @@ namespace UserManager.Infrastructure.Repositories
             return await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        public Task<User?> GetByIdentityProviderIdAsync(string identityProviderId, CancellationToken cancellationToken)
+        {
+            return _context.Users.FirstOrDefaultAsync(u => u.IdentityProviderId == identityProviderId, cancellationToken);
+        }
+
         public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken)
         {
             return _context.Users.AnyAsync(u => u.Id == id, cancellationToken);
@@ -44,11 +43,6 @@ namespace UserManager.Infrastructure.Repositories
         public async Task<IEnumerable<User>> GetAllAsync()
         {
             return await _context.Users.ToListAsync();
-        }
-
-        public async Task<bool> EmailExistsAsync(Email email, CancellationToken cancellationToken)
-        {
-            return await _context.Users.AnyAsync(u => u.Email == email, cancellationToken);
         }
     }
 }

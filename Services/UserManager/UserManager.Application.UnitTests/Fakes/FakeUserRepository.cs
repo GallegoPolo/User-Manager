@@ -1,6 +1,5 @@
 using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
-using UserManager.Domain.ValueObjects;
 
 namespace UserManager.Application.UnitTests.Fakes;
 
@@ -24,11 +23,15 @@ public sealed class FakeUserRepository : IUserRepository
         return this;
     }
 
+    public void ReplaceAllWith(User user)
+    {
+        _users.Clear();
+        _existingIds.Clear();
+        With(user);
+    }
+
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(_existingIds.Contains(id));
-
-    public Task<bool> EmailExistsAsync(Email email, CancellationToken cancellationToken) =>
-        Task.FromResult(_users.Any(u => u.Email == email));
 
     public Task AddAsync(User user)
     {
@@ -36,8 +39,19 @@ public sealed class FakeUserRepository : IUserRepository
         return Task.CompletedTask;
     }
 
-    public Task UpdateAsync(User user) => throw new NotSupportedException();
-    public Task DeleteAsync(User user) => throw new NotSupportedException();
-    public Task<User?> GetByIdAsync(Guid id) => throw new NotSupportedException();
-    public Task<IEnumerable<User>> GetAllAsync() => throw new NotSupportedException();
+    public Task DeleteAsync(User user)
+    {
+        _users.Remove(user);
+        _existingIds.Remove(user.Id);
+        return Task.CompletedTask;
+    }
+
+    public Task<User?> GetByIdAsync(Guid id) =>
+        Task.FromResult(_users.SingleOrDefault(u => u.Id == id));
+
+    public Task<User?> GetByIdentityProviderIdAsync(string identityProviderId, CancellationToken cancellationToken) =>
+        Task.FromResult(_users.SingleOrDefault(u => u.IdentityProviderId == identityProviderId));
+
+    public Task<IEnumerable<User>> GetAllAsync() =>
+        Task.FromResult<IEnumerable<User>>(_users.ToList());
 }

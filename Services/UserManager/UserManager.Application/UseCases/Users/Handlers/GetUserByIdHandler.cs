@@ -2,7 +2,6 @@
 using UserManager.Application.Common;
 using UserManager.Application.UseCases.Users.DTOs;
 using UserManager.Application.UseCases.Users.Queries;
-using UserManager.Domain.Common;
 using UserManager.Domain.Interfaces;
 
 namespace UserManager.Application.UseCases.Users.Handlers
@@ -21,7 +20,7 @@ namespace UserManager.Application.UseCases.Users.Handlers
             var user = await _repository.GetByIdAsync(request.Id);
 
             if (user == null)
-                return Result<UserDTO>.Failure(new ValidationError("Id", "User not found"));
+                return Result<UserDTO>.NotFound("Id", "Usuário não encontrado.");
 
             var response = new UserDTO(user.Id, user.Name, user.Email.Value, user.CreatedAt);
 

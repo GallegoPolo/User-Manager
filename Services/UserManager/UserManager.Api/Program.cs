@@ -1,4 +1,5 @@
 using UserManager.Api.Extensions;
+using UserManager.Api.Identity;
 using UserManager.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,11 +18,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services
        .AddApplication()
-       .AddDomainServices()
        .AddInfrastructure()
        .AddPersistence(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);
-builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddKeycloakAuthentication(builder.Configuration);
 builder.AddObservability();
 
 var app = builder.Build();
@@ -37,8 +37,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("Frontend");
 app.UseAuthentication();
+app.UseMiddleware<ProvisionCurrentUserMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
 
-
+public partial class Program;

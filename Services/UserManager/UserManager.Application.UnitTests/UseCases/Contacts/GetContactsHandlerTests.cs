@@ -15,10 +15,10 @@ public sealed class GetContactsHandlerTests
     private readonly FakeContactRepository _contacts = new();
 
     [Fact]
-    public async Task Handle_WhenOwnerDoesNotExist_ReturnsNotFound()
+    public async Task Handle_WhenCurrentUserNoLongerExists_ReturnsNotFound()
     {
         // Act
-        var result = await CreateHandler().Handle(new GetContactsQuery(Guid.NewGuid()), CancellationToken.None);
+        var result = await CreateHandler(Guid.NewGuid()).Handle(new GetContactsQuery(), CancellationToken.None);
 
         // Assert
         Assert.Equal(ErrorType.NotFound, result.ErrorType);
@@ -34,7 +34,7 @@ public sealed class GetContactsHandlerTests
                  .With(Contact.Create(Guid.NewGuid(), "Outro dono", Email.Create("x@example.com"), phone: null));
 
         // Act
-        var result = await CreateHandler().Handle(new GetContactsQuery(OwnerId), CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetContactsQuery(), CancellationToken.None);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -54,5 +54,5 @@ public sealed class GetContactsHandlerTests
             });
     }
 
-    private GetContactsHandler CreateHandler() => new(_users, _contacts);
+    private GetContactsHandler CreateHandler(Guid? currentUserId = null) => new(new FakeCurrentUser().ProvisionedAs(currentUserId ?? OwnerId), _users, _contacts);
 }

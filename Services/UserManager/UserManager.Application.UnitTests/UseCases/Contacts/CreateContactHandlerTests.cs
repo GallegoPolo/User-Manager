@@ -16,13 +16,13 @@ public sealed class CreateContactHandlerTests
     private readonly FakeUnitOfWork _unitOfWork = new();
 
     [Fact]
-    public async Task Handle_WhenOwnerDoesNotExist_ReturnsNotFoundAndSavesNothing()
+    public async Task Handle_WhenCurrentUserNoLongerExists_ReturnsNotFoundAndSavesNothing()
     {
         // Arrange
-        var command = new CreateContactCommand(Guid.NewGuid(), "Ana", "ana@example.com", null);
+        var command = new CreateContactCommand("Ana", "ana@example.com", null);
 
         // Act
-        var result = await CreateHandler().Handle(command, CancellationToken.None);
+        var result = await CreateHandler(Guid.NewGuid()).Handle(command, CancellationToken.None);
 
         // Assert
         Assert.Equal(ErrorType.NotFound, result.ErrorType);
@@ -35,7 +35,7 @@ public sealed class CreateContactHandlerTests
     {
         // Arrange
         _contacts.With(Contact.Create(OwnerId, "Ana", Email.Create("ana@example.com"), phone: null));
-        var command = new CreateContactCommand(OwnerId, "Ana Souza", "  ANA@Example.com ", null);
+        var command = new CreateContactCommand("Ana Souza", "  ANA@Example.com ", null);
 
         // Act
         var result = await CreateHandler().Handle(command, CancellationToken.None);
@@ -51,7 +51,7 @@ public sealed class CreateContactHandlerTests
     {
         // Arrange
         _contacts.With(Contact.Create(Guid.NewGuid(), "Ana", Email.Create("ana@example.com"), phone: null));
-        var command = new CreateContactCommand(OwnerId, "Ana", "ana@example.com", null);
+        var command = new CreateContactCommand("Ana", "ana@example.com", null);
 
         // Act
         var result = await CreateHandler().Handle(command, CancellationToken.None);
@@ -64,7 +64,7 @@ public sealed class CreateContactHandlerTests
     public async Task Handle_WithValidData_AddsContactSavesOnceAndReturnsId()
     {
         // Arrange
-        var command = new CreateContactCommand(OwnerId, "Ana", "ana@example.com", "(11) 98765-4321");
+        var command = new CreateContactCommand("Ana", "ana@example.com", "(11) 98765-4321");
 
         // Act
         var result = await CreateHandler().Handle(command, CancellationToken.None);
@@ -85,7 +85,7 @@ public sealed class CreateContactHandlerTests
     public async Task Handle_WithBlankEmail_TreatsEmailAsAbsent(string? blankEmail)
     {
         // Arrange
-        var command = new CreateContactCommand(OwnerId, "Ana", blankEmail, "11987654321");
+        var command = new CreateContactCommand("Ana", blankEmail, "11987654321");
 
         // Act
         var result = await CreateHandler().Handle(command, CancellationToken.None);
@@ -101,7 +101,7 @@ public sealed class CreateContactHandlerTests
         // Arrange
         var contactsAtSave = 0;
         _unitOfWork.OnSave = () => contactsAtSave = _contacts.Contacts.Count;
-        var command = new CreateContactCommand(OwnerId, "Ana", "ana@example.com", null);
+        var command = new CreateContactCommand("Ana", "ana@example.com", null);
 
         // Act
         await CreateHandler().Handle(command, CancellationToken.None);
@@ -110,5 +110,5 @@ public sealed class CreateContactHandlerTests
         Assert.Equal(1, contactsAtSave);
     }
 
-    private CreateContactHandler CreateHandler() => new(_users, _contacts, _unitOfWork);
+    private CreateContactHandler CreateHandler(Guid? currentUserId = null) => new(new FakeCurrentUser().ProvisionedAs(currentUserId ?? OwnerId), _users, _contacts, _unitOfWork);
 }

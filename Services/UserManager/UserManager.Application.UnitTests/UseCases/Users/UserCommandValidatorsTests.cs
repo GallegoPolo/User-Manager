@@ -1,51 +1,48 @@
 using UserManager.Application.UseCases.Users.Commands;
 using UserManager.Application.UseCases.Users.Validators;
+using UserManager.Domain.Entities;
 
 namespace UserManager.Application.UnitTests.UseCases.Users;
 
 public sealed class UserCommandValidatorsTests
 {
     [Theory]
-    [InlineData("ana@localhost")]
-    [InlineData("ana@")]
     [InlineData("")]
-    public void CreateValidator_WithInvalidEmail_FailsOnEmail(string email)
+    [InlineData("   ")]
+    public void RenameValidator_WithoutName_FailsOnName(string name)
     {
         // Act
-        var result = new CreateUserCommandValidator().Validate(new CreateUserCommand("Ana", email));
+        var result = new RenameUserCommandValidator().Validate(new RenameUserCommand(Guid.NewGuid(), name));
 
         // Assert
-        Assert.Contains(result.Errors, e => e.PropertyName == "Email");
+        Assert.Contains(result.Errors, e => e.PropertyName == "Name");
     }
 
     [Fact]
-    public void CreateValidator_WithEmailNeedingNormalization_IsValid()
+    public void RenameValidator_WithNameTooLong_FailsOnName()
     {
         // Act
-        var result = new CreateUserCommandValidator().Validate(new CreateUserCommand("Ana", " ANA@Example.com "));
+        var result = new RenameUserCommandValidator().Validate(new RenameUserCommand(Guid.NewGuid(), new string('a', User.MAX_NAME_LENGTH + 1)));
 
         // Assert
-        Assert.True(result.IsValid);
-    }
-
-    [Theory]
-    [InlineData("ana@localhost")]
-    [InlineData("ana@")]
-    [InlineData("")]
-    public void UpdateValidator_WithInvalidEmail_FailsOnEmail(string email)
-    {
-        // Act
-        var result = new UpdateUserCommandValidator().Validate(new UpdateUserCommand(Guid.NewGuid(), "Ana", email));
-
-        // Assert
-        Assert.Contains(result.Errors, e => e.PropertyName == "Email");
+        Assert.Contains(result.Errors, e => e.PropertyName == "Name");
     }
 
     [Fact]
-    public void UpdateValidator_WithEmailNeedingNormalization_IsValid()
+    public void RenameValidator_WithoutId_FailsOnId()
     {
         // Act
-        var result = new UpdateUserCommandValidator().Validate(new UpdateUserCommand(Guid.NewGuid(), "Ana", " ANA@Example.com "));
+        var result = new RenameUserCommandValidator().Validate(new RenameUserCommand(Guid.Empty, "Ana"));
+
+        // Assert
+        Assert.Contains(result.Errors, e => e.PropertyName == "Id");
+    }
+
+    [Fact]
+    public void RenameValidator_WithValidData_IsValid()
+    {
+        // Act
+        var result = new RenameUserCommandValidator().Validate(new RenameUserCommand(Guid.NewGuid(), "Ana Souza"));
 
         // Assert
         Assert.True(result.IsValid);

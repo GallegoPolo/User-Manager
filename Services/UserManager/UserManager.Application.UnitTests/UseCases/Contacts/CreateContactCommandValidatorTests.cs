@@ -6,7 +6,6 @@ namespace UserManager.Application.UnitTests.UseCases.Contacts;
 
 public sealed class CreateContactCommandValidatorTests
 {
-    private static readonly Guid OwnerId = Guid.NewGuid();
     private readonly CreateContactCommandValidator _validator = new();
 
     [Theory]
@@ -17,7 +16,7 @@ public sealed class CreateContactCommandValidatorTests
     public void Validate_WithEmailOrPhone_IsValid(string? email, string? phone)
     {
         // Act
-        var result = _validator.Validate(new CreateContactCommand(OwnerId, "Ana", email, phone));
+        var result = _validator.Validate(new CreateContactCommand("Ana", email, phone));
 
         // Assert
         Assert.True(result.IsValid);
@@ -30,7 +29,7 @@ public sealed class CreateContactCommandValidatorTests
     public void Validate_WithoutEmailAndPhone_FailsOnEmail(string? email, string? phone)
     {
         // Act
-        var result = _validator.Validate(new CreateContactCommand(OwnerId, "Ana", email, phone));
+        var result = _validator.Validate(new CreateContactCommand("Ana", email, phone));
 
         // Assert
         Assert.Contains(result.Errors, e => e.PropertyName == "Email");
@@ -40,7 +39,7 @@ public sealed class CreateContactCommandValidatorTests
     public void Validate_WithInvalidEmail_FailsOnEmail()
     {
         // Act
-        var result = _validator.Validate(new CreateContactCommand(OwnerId, "Ana", "ana@", "11987654321"));
+        var result = _validator.Validate(new CreateContactCommand("Ana", "ana@", "11987654321"));
 
         // Assert
         Assert.Equal("Email", Assert.Single(result.Errors).PropertyName);
@@ -50,7 +49,7 @@ public sealed class CreateContactCommandValidatorTests
     public void Validate_WithInvalidPhone_FailsOnPhone()
     {
         // Act
-        var result = _validator.Validate(new CreateContactCommand(OwnerId, "Ana", "ana@example.com", "123"));
+        var result = _validator.Validate(new CreateContactCommand("Ana", "ana@example.com", "123"));
 
         // Assert
         Assert.Equal("Phone", Assert.Single(result.Errors).PropertyName);
@@ -62,7 +61,7 @@ public sealed class CreateContactCommandValidatorTests
     public void Validate_WithoutName_FailsOnName(string name)
     {
         // Act
-        var result = _validator.Validate(new CreateContactCommand(OwnerId, name, "ana@example.com", null));
+        var result = _validator.Validate(new CreateContactCommand(name, "ana@example.com", null));
 
         // Assert
         Assert.Equal("Name", Assert.Single(result.Errors).PropertyName);
@@ -75,7 +74,7 @@ public sealed class CreateContactCommandValidatorTests
         var name = new string('a', Contact.MaxNameLength + 1);
 
         // Act
-        var result = _validator.Validate(new CreateContactCommand(OwnerId, name, "ana@example.com", null));
+        var result = _validator.Validate(new CreateContactCommand(name, "ana@example.com", null));
 
         // Assert
         Assert.Equal("Name", Assert.Single(result.Errors).PropertyName);

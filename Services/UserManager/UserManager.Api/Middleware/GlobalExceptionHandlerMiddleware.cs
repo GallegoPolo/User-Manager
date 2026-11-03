@@ -6,6 +6,7 @@ using System.Net;
 using System.Text.Json;
 using UserManager.Api.Contracts.Errors;
 using UserManager.Api.Exceptions;
+using UserManager.Application.Common;
 using UserManager.Domain.Common;
 using UserManager.Domain.Exceptions;
 
@@ -56,6 +57,7 @@ namespace UserManager.Api.Middleware
                 ValidationException ve => MapValidationException(ve),
                 DomainException de => MapDomainException(de),
                 NotFoundException nfe => MapNotFoundException(nfe),
+                UniqueConstraintViolationException uce => MapUniqueConstraintViolation(uce, env),
                 DbUpdateException dbe => MapDatabaseException(dbe, env),
                 _ => MapGenericException(ex, env)
             };
@@ -101,6 +103,18 @@ namespace UserManager.Api.Middleware
                 traceId: Activity.Current?.Id ?? Guid.NewGuid().ToString(),
                 timestamp: DateTime.UtcNow,
                 detail: null
+            );
+        }
+
+        private static ErrorResponse MapUniqueConstraintViolation(UniqueConstraintViolationException ex, IHostEnvironment environment)
+        {
+            return new ErrorResponse(
+                title: "Conflict",
+                status: (int)HttpStatusCode.Conflict,
+                errors: [new ValidationError("Database", "A record with this value already exists.")],
+                traceId: Activity.Current?.Id ?? Guid.NewGuid().ToString(),
+                timestamp: DateTime.UtcNow,
+                detail: environment.IsDevelopment() ? ex.ToString() : null
             );
         }
 

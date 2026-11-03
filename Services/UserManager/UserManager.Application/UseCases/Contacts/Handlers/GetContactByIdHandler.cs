@@ -8,16 +8,18 @@ namespace UserManager.Application.UseCases.Contacts.Handlers;
 
 public sealed class GetContactByIdHandler : IRequestHandler<GetContactByIdQuery, Result<ContactDTO>>
 {
+    private readonly ICurrentUser _currentUser;
     private readonly IContactRepository _contactRepository;
 
-    public GetContactByIdHandler(IContactRepository contactRepository)
+    public GetContactByIdHandler(ICurrentUser currentUser, IContactRepository contactRepository)
     {
+        _currentUser = currentUser;
         _contactRepository = contactRepository;
     }
 
     public async Task<Result<ContactDTO>> Handle(GetContactByIdQuery query, CancellationToken cancellationToken)
     {
-        var contact = await _contactRepository.GetByIdAsync(query.OwnerId, query.ContactId, cancellationToken);
+        var contact = await _contactRepository.GetByIdAsync(_currentUser.UserId, query.ContactId, cancellationToken);
 
         if (contact is null)
             return Result<ContactDTO>.NotFound("ContactId", "Contato não encontrado.");

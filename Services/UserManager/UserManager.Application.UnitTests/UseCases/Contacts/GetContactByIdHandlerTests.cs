@@ -23,7 +23,7 @@ public sealed class GetContactByIdHandlerTests
     public async Task Handle_WhenContactBelongsToAnotherOwner_ReturnsNotFound()
     {
         // Act
-        var result = await CreateHandler().Handle(new GetContactByIdQuery(Guid.NewGuid(), _ana.Id), CancellationToken.None);
+        var result = await CreateHandler(Guid.NewGuid()).Handle(new GetContactByIdQuery(_ana.Id), CancellationToken.None);
 
         // Assert
         Assert.Equal(ErrorType.NotFound, result.ErrorType);
@@ -34,7 +34,7 @@ public sealed class GetContactByIdHandlerTests
     public async Task Handle_WhenContactDoesNotExist_ReturnsNotFound()
     {
         // Act
-        var result = await CreateHandler().Handle(new GetContactByIdQuery(OwnerId, Guid.NewGuid()), CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetContactByIdQuery(Guid.NewGuid()), CancellationToken.None);
 
         // Assert
         Assert.Equal(ErrorType.NotFound, result.ErrorType);
@@ -44,7 +44,7 @@ public sealed class GetContactByIdHandlerTests
     public async Task Handle_WhenContactBelongsToOwner_ReturnsDto()
     {
         // Act
-        var result = await CreateHandler().Handle(new GetContactByIdQuery(OwnerId, _ana.Id), CancellationToken.None);
+        var result = await CreateHandler().Handle(new GetContactByIdQuery(_ana.Id), CancellationToken.None);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -56,5 +56,5 @@ public sealed class GetContactByIdHandlerTests
         Assert.Equal(_ana.CreatedAt, dto.CreatedAt);
     }
 
-    private GetContactByIdHandler CreateHandler() => new(_contacts);
+    private GetContactByIdHandler CreateHandler(Guid? currentUserId = null) => new(new FakeCurrentUser().ProvisionedAs(currentUserId ?? OwnerId), _contacts);
 }

@@ -165,6 +165,8 @@ O **Move messages** move a fila inteira: um evento inválido volta para `audit_e
 
 O consumidor é idempotente (índice único em `eventId` no MongoDB), então reprocessar uma mensagem que já foi gravada não duplica o log.
 
+> **Em transição (frente B):** o UserManager já usa o Keycloak, mas o frontend ainda faz login pelo AuthService. Até o BFF (B3) a tela de usuários não funciona; use o `UserManager.Api.http` com um token do Keycloak.
+
 ### Login padrão (bootstrap)
 
 - **E-mail:** `admin@authservice.com`  
@@ -194,7 +196,10 @@ Proxy do Vite:
 - Bootstrap automático do admin inicial
 
 ### UserManager
-- CRUD de usuários
+- Aceita só tokens do Keycloak (realm `user-manager`, audience `user-manager-api`), conferidos com a chave pública
+- O `User` nasce no primeiro acesso (**JIT provisioning**), ligado à pessoa pelo `sub` do token (`IdentityProviderId`); duas requisições simultâneas criam um só `User`
+- `/api/me` e `/api/me/contacts`: a pessoa logada vê e altera a própria ficha e a própria agenda; o dono nunca vem da URL
+- `/api/users`: `viewer` e `operator` leem; só `operator` troca o nome de exibição ou exclui. E-mail é do Keycloak (atualizado a cada login)
 - Clean Architecture (Domain / Application / Infrastructure / Api)
 - Domain Events via MediatR
 - **Outbox pattern** para publicação confiável no RabbitMQ

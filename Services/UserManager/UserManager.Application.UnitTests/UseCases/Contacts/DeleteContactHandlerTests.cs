@@ -25,7 +25,7 @@ public sealed class DeleteContactHandlerTests
     public async Task Handle_WhenContactBelongsToAnotherOwner_ReturnsNotFoundAndKeepsContact()
     {
         // Act
-        var result = await CreateHandler().Handle(new DeleteContactCommand(Guid.NewGuid(), _ana.Id), CancellationToken.None);
+        var result = await CreateHandler(Guid.NewGuid()).Handle(new DeleteContactCommand(_ana.Id), CancellationToken.None);
 
         // Assert
         Assert.Equal(ErrorType.NotFound, result.ErrorType);
@@ -37,7 +37,7 @@ public sealed class DeleteContactHandlerTests
     public async Task Handle_WhenContactBelongsToOwner_RemovesRaisesEventAndSavesOnce()
     {
         // Act
-        var result = await CreateHandler().Handle(new DeleteContactCommand(OwnerId, _ana.Id), CancellationToken.None);
+        var result = await CreateHandler().Handle(new DeleteContactCommand(_ana.Id), CancellationToken.None);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -59,12 +59,12 @@ public sealed class DeleteContactHandlerTests
         };
 
         // Act
-        await CreateHandler().Handle(new DeleteContactCommand(OwnerId, _ana.Id), CancellationToken.None);
+        await CreateHandler().Handle(new DeleteContactCommand(_ana.Id), CancellationToken.None);
 
         // Assert
         Assert.True(removedAtSave);
         Assert.True(deletedEventAtSave);
     }
 
-    private DeleteContactHandler CreateHandler() => new(_contacts, _unitOfWork);
+    private DeleteContactHandler CreateHandler(Guid? currentUserId = null) => new(new FakeCurrentUser().ProvisionedAs(currentUserId ?? OwnerId), _contacts, _unitOfWork);
 }

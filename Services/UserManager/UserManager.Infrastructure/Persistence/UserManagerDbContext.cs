@@ -18,12 +18,13 @@ namespace UserManager.Infrastructure.Persistence
             {
                 entity.ToTable("Users");
                 entity.HasKey(u => u.Id);
+                entity.Property(u => u.IdentityProviderId).IsRequired().HasMaxLength(User.MaxIdentityProviderIdLength);
+                entity.HasIndex(u => u.IdentityProviderId).IsUnique();
                 entity.Property(u => u.Name).IsRequired().HasMaxLength(User.MAX_NAME_LENGTH);
                 entity.Property(u => u.Email)
                     .IsRequired()
                     .HasMaxLength(Email.MaxLength)
                     .HasConversion(email => email.Value, value => Email.Create(value));
-                entity.HasIndex(u => u.Email).IsUnique();
                 entity.Ignore(u => u.DomainEvents);
             });
 

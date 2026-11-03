@@ -1,4 +1,8 @@
-﻿using MediatR;
+﻿using MassTransit.EntityFrameworkCoreIntegration;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using UserManager.Application.Common;
 using UserManager.Application.Events;
 using UserManager.Domain.Events.Interfaces;
 using UserManager.Domain.Interfaces;
@@ -19,7 +23,26 @@ namespace UserManager.Infrastructure.Persistence
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             await DispatchDomainEventsAsync(cancellationToken);
-            return await _context.SaveChangesAsync(cancellationToken);
+
+            try
+            {
+                return await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres)
+            {
+                DiscardPendingChangesKeepingOutboxState();
+                throw new UniqueConstraintViolationException(postgres.ConstraintName, exception);
+            }
+        }
+
+        private void DiscardPendingChangesKeepingOutboxState()
+        {
+            var discarded = _context.ChangeTracker.Entries()
+                .Where(entry => entry.Entity is not OutboxState)
+                .ToList();
+
+            foreach (var entry in discarded)
+                entry.State = EntityState.Detached;
         }
 
         private async Task DispatchDomainEventsAsync(CancellationToken cancellationToken)

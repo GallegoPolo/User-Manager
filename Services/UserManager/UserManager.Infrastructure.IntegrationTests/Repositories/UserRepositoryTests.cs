@@ -20,7 +20,7 @@ public sealed class UserRepositoryTests : IClassFixture<PostgresFixture>
     {
         // Arrange
         var localPart = Guid.NewGuid().ToString("N");
-        var user = User.Create("Ana", Email.Create($"  {localPart.ToUpperInvariant()}@Example.com "));
+        var user = User.Provision($"kc-{Guid.NewGuid():N}", "Ana", Email.Create($"  {localPart.ToUpperInvariant()}@Example.com "));
 
         // Act
         await AddUserAsync(user);
@@ -34,18 +34,32 @@ public sealed class UserRepositoryTests : IClassFixture<PostgresFixture>
     }
 
     [Fact]
-    public async Task EmailExistsAsync_ComparesNormalizedEmail()
+    public async Task GetByIdentityProviderIdAsync_ReturnsStoredUser()
     {
         // Arrange
-        var email = $"{Guid.NewGuid():N}@example.com";
-        await AddUserAsync(User.Create("Ana", Email.Create(email)));
+        var sub = $"kc-{Guid.NewGuid():N}";
+        var user = User.Provision(sub, "Ana", Email.Create($"{Guid.NewGuid():N}@example.com"));
+        await AddUserAsync(user);
 
         // Act
         await using var context = _postgres.CreateContext();
-        var exists = await new UserRepository(context).EmailExistsAsync(Email.Create($" {email.ToUpperInvariant()} "), CancellationToken.None);
+        var loaded = await new UserRepository(context).GetByIdentityProviderIdAsync(sub, CancellationToken.None);
 
         // Assert
-        Assert.True(exists);
+        Assert.NotNull(loaded);
+        Assert.Equal(user.Id, loaded.Id);
+        Assert.Equal(sub, loaded.IdentityProviderId);
+    }
+
+    [Fact]
+    public async Task GetByIdentityProviderIdAsync_WhenMissing_ReturnsNull()
+    {
+        // Act
+        await using var context = _postgres.CreateContext();
+        var loaded = await new UserRepository(context).GetByIdentityProviderIdAsync($"kc-{Guid.NewGuid():N}", CancellationToken.None);
+
+        // Assert
+        Assert.Null(loaded);
     }
 
     private async Task AddUserAsync(User user)

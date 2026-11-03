@@ -209,7 +209,7 @@ public sealed class ContactRepositoryTests : IClassFixture<PostgresFixture>
 
     private async Task<Guid> CreateUserAsync()
     {
-        var user = User.Create("Dono", Email.Create($"{Guid.NewGuid()}@example.com"));
+        var user = User.Provision($"kc-{Guid.NewGuid():N}", "Dono", Email.Create($"{Guid.NewGuid()}@example.com"));
 
         await using var context = _postgres.CreateContext();
         context.Users.Add(user);

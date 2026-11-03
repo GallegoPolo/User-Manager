@@ -48,5 +48,5 @@ public sealed class UpdateContactCommandValidatorTests
     }
 
     private static UpdateContactCommand Command(string name, string? email, string? phone) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), name, email, phone);
+        new(Guid.NewGuid(), name, email, phone);
 }

@@ -3,84 +3,69 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UserManager.Api.Contracts.Requests;
 using UserManager.Api.Contracts.Responses;
+using UserManager.Api.Identity;
 using UserManager.Application.UseCases.Users.Commands;
 using UserManager.Application.UseCases.Users.Queries;
 
-namespace UserManager.Api.Controllers
+namespace UserManager.Api.Controllers;
+
+[ApiController]
+[Route("api/users")]
+public sealed class UserController : ControllerBase
 {
-    [Authorize(Policy = "AdminOnly")]
-    [ApiController]
-    [Route("api/users")]
-    public class UserController : ControllerBase
+    private readonly IMediator _mediator;
+
+    public UserController(IMediator mediator)
     {
-        private readonly IMediator _mediator;
+        _mediator = mediator;
+    }
 
-        public UserController(IMediator mediator)
-        {
-            _mediator = mediator;
-        }
+    [HttpGet]
+    [Authorize(Policy = Permissions.UsersRead)]
+    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new GetAllUsersQuery(), cancellationToken);
 
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
-        {
-            var result = await _mediator.Send(new CreateUserCommand(request.Name, request.Email));
+        if (!result.IsSuccess)
+            return this.Failure(result);
 
-            if (!result.IsSuccess)
-                return BadRequest(result.Errors);
+        return Ok(result.Value!.Select(user => new UserResponse(user.Id, user.Name, user.Email, user.CreatedAt)));
+    }
 
-            var response = new CreateUserResponse(result.Value);
-            return CreatedAtAction(nameof(Create), response);
-        }
+    [HttpGet("{id:guid}")]
+    [Authorize(Policy = Permissions.UsersRead)]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new GetUserByIdQuery(id), cancellationToken);
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            var result = await _mediator.Send(new GetUserByIdQuery(id));
+        if (!result.IsSuccess)
+            return this.Failure(result);
 
-            if (!result.IsSuccess)
-                return NotFound(result.Errors);
+        var user = result.Value!;
+        return Ok(new UserResponse(user.Id, user.Name, user.Email, user.CreatedAt));
+    }
 
-            var response = new GetUserByIdResponse(result.Value!.Id, result.Value.Name, result.Value.Email, result.Value.CreatedAt);
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = Permissions.UsersManage)]
+    public async Task<IActionResult> Rename(Guid id, [FromBody] RenameUserRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new RenameUserCommand(id, request.Name), cancellationToken);
 
-            return Ok(response);
-        }
+        if (!result.IsSuccess)
+            return this.Failure(result);
 
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            var result = await _mediator.Send(new GetAllUsersQuery());
+        return NoContent();
+    }
 
-            if (!result.IsSuccess)
-                return BadRequest(result.Errors);
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Permissions.UsersManage)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new DeleteUserCommand(id), cancellationToken);
 
-            var response = result.Value!.Select(dto => new GetAllUsersResponse(dto.Id, dto.Name, dto.Email, dto.CreatedAt));
+        if (!result.IsSuccess)
+            return this.Failure(result);
 
-            return Ok(response);
-        }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
-        {
-            var command = new UpdateUserCommand(id, request.Name, request.Email);
-            var result = await _mediator.Send(command);
-
-            if (!result.IsSuccess)
-                return BadRequest(result.Errors);
-
-            var response = new UpdateUserResponse(result.Value);
-            return Ok(response);
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(Guid id)
-        {
-            var command = new DeleteUserCommand(id);
-            var result = await _mediator.Send(command);
-
-            if (!result.IsSuccess)
-                return NotFound(result.Errors);
-
-            return NoContent();
-        }
+        return NoContent();
     }
 }

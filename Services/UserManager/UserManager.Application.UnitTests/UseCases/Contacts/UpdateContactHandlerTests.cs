@@ -26,10 +26,10 @@ public sealed class UpdateContactHandlerTests
     public async Task Handle_WhenContactBelongsToAnotherOwner_ReturnsNotFoundAndSavesNothing()
     {
         // Arrange
-        var command = new UpdateContactCommand(Guid.NewGuid(), _ana.Id, "Intrusa", "intrusa@example.com", null);
+        var command = new UpdateContactCommand(_ana.Id, "Intrusa", "intrusa@example.com", null);
 
         // Act
-        var result = await CreateHandler().Handle(command, CancellationToken.None);
+        var result = await CreateHandler(Guid.NewGuid()).Handle(command, CancellationToken.None);
 
         // Assert
         Assert.Equal(ErrorType.NotFound, result.ErrorType);
@@ -41,7 +41,7 @@ public sealed class UpdateContactHandlerTests
     public async Task Handle_KeepingOwnEmail_IsNotAConflict()
     {
         // Arrange
-        var command = new UpdateContactCommand(OwnerId, _ana.Id, "Ana Souza", " ANA@Example.com ", "11987654321");
+        var command = new UpdateContactCommand(_ana.Id, "Ana Souza", " ANA@Example.com ", "11987654321");
 
         // Act
         var result = await CreateHandler().Handle(command, CancellationToken.None);
@@ -57,7 +57,7 @@ public sealed class UpdateContactHandlerTests
     public async Task Handle_UsingEmailOfAnotherContactInSameBook_ReturnsConflictAndKeepsContact()
     {
         // Arrange
-        var command = new UpdateContactCommand(OwnerId, _ana.Id, "Ana", "bruno@example.com", null);
+        var command = new UpdateContactCommand(_ana.Id, "Ana", "bruno@example.com", null);
 
         // Act
         var result = await CreateHandler().Handle(command, CancellationToken.None);
@@ -72,7 +72,7 @@ public sealed class UpdateContactHandlerTests
     public async Task Handle_WithOnlyPhone_RemovesEmail()
     {
         // Arrange
-        var command = new UpdateContactCommand(OwnerId, _ana.Id, "Ana", "", "11987654321");
+        var command = new UpdateContactCommand(_ana.Id, "Ana", "", "11987654321");
 
         // Act
         var result = await CreateHandler().Handle(command, CancellationToken.None);
@@ -94,7 +94,7 @@ public sealed class UpdateContactHandlerTests
             nameAtSave = _ana.Name;
             updatedEventAtSave = _ana.DomainEvents.Any(e => e is ContactUpdatedDomainEvent);
         };
-        var command = new UpdateContactCommand(OwnerId, _ana.Id, "Ana Souza", "ana@example.com", null);
+        var command = new UpdateContactCommand(_ana.Id, "Ana Souza", "ana@example.com", null);
 
         // Act
         await CreateHandler().Handle(command, CancellationToken.None);
@@ -104,5 +104,5 @@ public sealed class UpdateContactHandlerTests
         Assert.True(updatedEventAtSave);
     }
 
-    private UpdateContactHandler CreateHandler() => new(_contacts, _unitOfWork);
+    private UpdateContactHandler CreateHandler(Guid? currentUserId = null) => new(new FakeCurrentUser().ProvisionedAs(currentUserId ?? OwnerId), _contacts, _unitOfWork);
 }
