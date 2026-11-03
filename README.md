@@ -92,12 +92,41 @@ Sobe:
 - Redis (`6379`)
 - RabbitMQ (`5672` / painel `15672`)
 - MongoDB (`27017`)
+- Keycloak (`8080`) com banco próprio (`keycloak-db`) e a realm `user-manager` importada no boot
+- Mailpit (`8025` tela / `1025` SMTP): captura os e-mails do Keycloak, nada sai para a internet
 
 Credenciais padrão do Compose:
 - Postgres: `postgres` / `postgres123`
 - Redis: sem senha
 - RabbitMQ: `dev` / `dev123`
 - MongoDB: `dev` / `dev123`
+- Keycloak (console de admin, realm `master`): `admin` / `admin`
+
+### Identidade (Keycloak)
+
+A realm `user-manager` é configuração como código: `docker/keycloak/user-manager-realm.json`.
+
+| URL | Para quê |
+|-----|----------|
+| http://localhost:8080/admin | console de admin (`admin` / `admin`) |
+| http://localhost:8080/realms/user-manager/account | conta da pessoa (cadastro, troca de e-mail e senha) |
+| http://localhost:8025 | caixa de entrada do Mailpit (confirmação de e-mail, "esqueci a senha") |
+
+Pessoas de teste (e-mail já verificado):
+
+| Usuário | Senha | Papel |
+|---------|-------|-------|
+| `ana` | `ana123` | nenhum (pessoa comum) |
+| `vera` | `vera123` | `viewer` (só lê usuários e auditoria) |
+| `otto` | `otto123` | `operator` (lê e altera usuários) |
+
+O Keycloak **só importa a realm se ela ainda não existe**. Depois de mudar o arquivo, recrie o banco do Keycloak:
+
+```bash
+docker compose rm -sf keycloak keycloak-db
+docker volume rm user-manager_keycloakdata
+docker compose up -d keycloak
+```
 
 ### 2. Migrations
 

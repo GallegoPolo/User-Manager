@@ -86,7 +86,15 @@ Por quê:
 
 ### Frente B — Identidade
 
-- [ ] **B — Keycloak + JIT provisioning + `ICurrentUser` + BFF**
+- [ ] **B — Keycloak + JIT provisioning + `ICurrentUser` + BFF** (spec local: `docs/superpowers/specs/2026-11-02-b-identidade-design.md`)
+  Cada pessoa loga pelo Keycloak e cuida da própria agenda; operadores com papéis leem/alteram usuários e leem a auditoria; o navegador nunca vê token. Papéis: nenhum (pessoa comum), `viewer` (só lê usuários e auditoria), `operator` (lê e altera usuários); ninguém vê a agenda de outro.
+  - [x] **B1 — Keycloak + Mailpit + realm como código**: `keycloak` 26.8.1 com banco próprio (`keycloak-db`) e Mailpit no compose; realm `user-manager` em `docker/keycloak/user-manager-realm.json`, importada no boot (cadastro, verificação de e-mail, "esqueci a senha", papéis `viewer`/`operator`, client `user-manager-bff` confidencial com Authorization Code + PKCE e sem password grant, claim plano `roles`, `aud` = `user-manager-api` e `audit-api`, pessoas de teste `ana`/`vera`/`otto`). Teste de contrato com Keycloak real (`Testcontainers.Keycloak`) trava o formato do token que o B2 consome (`sub`, `email`, `name`, `roles`, `aud`); mutação provou que tirar o mapper ou o audience derruba os testes certos. SMTP provado ponta a ponta (Admin API → Mailpit).
+  - [ ] **B2 — UserManager com identidade**: `IdentityProviderId` (migration apaga os dados de teste; sai o índice único de `Email`), `User.Provision`/`Rename`/`SyncEmail`, `ICurrentUser`, JIT idempotente, `/api/me`, `/api/me/contacts`, `/api/users` com policies por permissão, JWT do Keycloak. O frontend antigo fica fora do ar até o B3 (aceito: só local)
+  - [ ] **B3 — BFF** (ASP.NET Core + OIDC + YARP, sessão no Redis, cookie `HttpOnly`, anti-CSRF) e frontend no login novo (resolve o F5)
+  - [ ] **B4 — Auditoria**: AuditService.Api com JWT + `audit:read` e OpenTelemetry; `PerformedBy` opcional nos eventos de integração
+  - [ ] **B5 — Remoção do AuthService** (incluindo API Keys)
+  - [ ] **B6 — Login com GitHub**
+  - [ ] **B7 — Login com Google**
 
 ### Frente E — Frontend
 
@@ -105,7 +113,7 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Produtor: mensagem sem rota (nenhuma fila ligada) fica na Outbox e é retentada sem limite (log de erro a cada ~1 s, `QueryDelay`), sem estado `Failed` nem alerta. Intencional (não perde o evento), mas invisível sem monitorar a tabela `OutboxMessage` | `UserManager` `MessagingExtensions` | quando houver alertas (Grafana) |
 | Filas `audit_events_error` e `audit_events_skipped` sem alerta de tamanho | AuditService | quando houver alertas (Grafana) |
 | Com várias instâncias da API (cada uma com o serviço de entrega da Outbox), a ordem global de publicação não é garantida | Outbox | quando surgir um consumidor que dependa de ordem (hoje a auditoria grava o horário do evento, não a ordem de chegada) |
-| `performedBy` da auditoria é sempre `"system"`: os eventos de integração ainda não carregam quem fez a ação | `IntegrationEventMapper` / contratos | B (o `sub` do Keycloak entra nos eventos como campo **opcional**) |
+| `performedBy` da auditoria é sempre `"system"`: os eventos de integração ainda não carregam quem fez a ação | `IntegrationEventMapper` / contratos | B4 (`Guid? PerformedBy` **opcional** com o id do `User` no UserManager, nunca o `sub`) |
 | AuditService referencia o projeto `UserManager.Contracts` (acoplamento de compilação entre serviços) | `AuditService.Infrastructure.csproj` | se os serviços forem para repositórios separados (vira pacote NuGet) |
 | Pacotes com vulnerabilidade conhecida: `SharpCompress`/`Snappier` (via MongoDB.Driver), `Microsoft.OpenApi` (Api) | AuditService | manutenção |
 | Vulnerabilidades em dependências de dev do frontend (`npm audit`) | `frontend` | E |
@@ -113,7 +121,11 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Teste de partida do Worker usa porta fixa (`FreeTcpPort`) e `localhost`: corrida rara de porta e não roda com Docker remoto | `AuditConsumersStartupTests` | quando houver CI |
 | Seção "Rodar" do CLAUDE.md e passo a passo de ambiente zerado | docs | quando conveniente |
 | MongoDB sem spans (driver 3.6 sem suporte nativo a OpenTelemetry) | AuditService | quando o driver suportar |
-| `AuditService.Api` e `AuthService` sem OpenTelemetry | AuditService.Api, AuthService | B |
+| `AuditService.Api` e `AuthService` sem OpenTelemetry | AuditService.Api, AuthService | B4 (AuditService.Api); o do AuthService fecha por remoção no B5 |
+| Realm só é importada se não existe: mudar `user-manager-realm.json` exige recriar o volume `keycloakdata` (passo a passo no README) | `docker/keycloak` | se a realm precisar evoluir sem perder pessoas cadastradas (Admin API ou ferramenta de config-as-code como `keycloak-config-cli`) |
+| Data Protection do BFF sem chaves compartilhadas | BFF | quando houver mais de uma instância do BFF |
+| Issuer `http://localhost:8080/...` só funciona com os serviços no host; em containers precisa de `KC_HOSTNAME` | Keycloak / hosts | quando os serviços forem para containers |
+| Token de serviço (client credentials) não pode disparar JIT | UserManager | fatia do gateway para clientes máquina |
 | Worker do AuditService sem métricas (`AddMeter("System.Runtime")`, sem pacote) | `AuditService.Worker` | quando conveniente |
 | Portas do Grafana/OTLP abertas em todas as interfaces, com Grafana anônima (admin) | `docker-compose.yml` | quando conveniente (`127.0.0.1:`) |
 | Traces de ruído do Swagger e de `OPTIONS` (CORS) | `UserManager.Api` | quando conveniente (filtro na instrumentação) |
@@ -162,3 +174,13 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Recurso de outro dono → **404**, nunca 403; o repositório só busca por `(dono, id)` | 403 confirmaria que o recurso existe (OWASP IDOR); filtrar na consulta impede o vazamento por construção |
 | `PUT` de contato é **substituição completa** | semântica do HTTP; alteração parcial seria `PATCH`, fora do escopo |
 | Consumidor continua o trace do produtor (pai, não só link) | padrão do MassTransit (antes, do `RabbitMQ.Client` 7.2); travado por teste |
+| **Keycloak** como provedor de identidade; o UserManager guarda uma ficha própria (`User`) ligada pelo `sub` (B) | o domínio precisa de um dono local para a agenda (FK), o sistema continua de pé sem o Keycloak para quem já tem token, e trocar de IdP só mexe na borda (Anti-Corruption Layer). O UserManager nunca chama o Keycloak |
+| `User` nasce só pelo **JIT** no primeiro acesso; `POST /api/users` sai (B) | um `User` criado pelo operador não teria `sub` e nunca conseguiria entrar |
+| E-mail é do Keycloak (cópia atualizada a cada login); **nome de exibição é do UserManager** (semeado no JIT) (B) | o que a pessoa **é** fica no IdP; como ela **aparece** no app fica no app (avatar na frente E). Mesmo critério do Slack com SSO, que deixa isso como política |
+| Papéis só onde há necessidade: `viewer` e `operator`; policies com nome de **permissão** (`users:read`, `users:manage`, `audit:read`) (B) | o papel some do código: mudar quem pode o quê é mudar um mapeamento só |
+| Papéis chegam como claim plano `roles` por **mapper na realm** (B1) | sem código para achatar `realm_access.roles`; a forma do token é configuração versionada e testada |
+| BFF próprio (ASP.NET Core + OIDC + YARP) agora; gateway para clientes máquina depois (B) | um gateway atrás do BFF não faria nada que o BFF já não faz; com um cliente máquina (client credentials) ele ganha motivo. Duende.BFF exige licença comercial; oauth2-proxy tiraria o BFF do .NET |
+| AuthService sai em etapas (B5), incluindo as API Keys | nenhum serviço usa as API Keys; um emissor de token só; a história "construí para entender, troquei pelo padrão de mercado" é a mesma da Outbox (A1–A4 → A5) |
+| "Excluir usuário" apaga os dados do app; bloquear o acesso é desativar a conta no Keycloak (B) | cada sistema cuida do que é seu; o UserManager não escreve no Keycloak |
+| Keycloak com **Postgres próprio** (`keycloak-db`) (B1) | banco por serviço; o `init.sql` do Postgres compartilhado só roda em volume vazio; o `sub` sobrevive a reinícios |
+| Teste da realm liga o password grant **só no container de teste** (Admin API) para obter tokens sem navegador (B1) | o arquivo da realm continua sem password grant (desaconselhado pelo OAuth 2.1); o teste confere isso antes de ligar |

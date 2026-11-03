@@ -1,0 +1,136 @@
+{
+  "realm": "user-manager",
+  "displayName": "User-Manager",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "verifyEmail": true,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "rememberMe": false,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@user-manager.local",
+    "fromDisplayName": "User-Manager",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "viewer",
+        "description": "Lê a lista de usuários e a auditoria"
+      },
+      {
+        "name": "operator",
+        "description": "Lê e altera usuários; lê a auditoria"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "user-manager-bff",
+      "name": "User-Manager BFF",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "user-manager-bff-dev-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/signin-oidc"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/signout-callback-oidc"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles (claim roles)",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "usermodel.realmRoleMapping.rolePrefix": "",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience user-manager-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "user-manager-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience audit-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "audit-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "ana",
+      "email": "ana@user-manager.local",
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Souza",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "ana123", "temporary": false }
+      ],
+      "realmRoles": ["default-roles-user-manager"]
+    },
+    {
+      "username": "vera",
+      "email": "vera@user-manager.local",
+      "emailVerified": true,
+      "firstName": "Vera",
+      "lastName": "Lima",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "vera123", "temporary": false }
+      ],
+      "realmRoles": ["default-roles-user-manager", "viewer"]
+    },
+    {
+      "username": "otto",
+      "email": "otto@user-manager.local",
+      "emailVerified": true,
+      "firstName": "Otto",
+      "lastName": "Reis",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "otto123", "temporary": false }
+      ],
+      "realmRoles": ["default-roles-user-manager", "operator"]
+    }
+  ]
+}
