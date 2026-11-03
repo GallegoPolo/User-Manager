@@ -1,36 +1,25 @@
 import { useState, type FormEvent } from "react";
-import type { User, UserFormData } from "../types/user";
+import type { RenameUserData, User } from "../types/user";
 
 interface Props {
-  open: boolean;
-  user: User | null; // null = criar, preenchido = editar
+  user: User;
   isSaving: boolean;
   onClose: () => void;
-  onSubmit: (data: UserFormData) => void;
+  onSubmit: (data: RenameUserData) => void;
 }
 
-export function UserFormModal({
-  open,
-  user,
-  isSaving,
-  onClose,
-  onSubmit,
-}: Props) {
-  // valor inicial já nasce correto — sem useEffect
-  const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
-
-  if (!open) return null;
+export function UserFormModal({ user, isSaving, onClose, onSubmit }: Props) {
+  const [name, setName] = useState(user.name);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSubmit({ name, email });
+    onSubmit({ name });
   }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h2>{user ? "Editar usuário" : "Novo usuário"}</h2>
+        <h2>Nome de exibição</h2>
         <form onSubmit={handleSubmit}>
           <label htmlFor="name">Nome</label>
           <input
@@ -39,14 +28,7 @@ export function UserFormModal({
             onChange={(e) => setName(e.target.value)}
             required
           />
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <p>E-mail: {user.email} (gerenciado pelo Keycloak)</p>
           <div className="modal-actions">
             <button type="button" onClick={onClose} disabled={isSaving}>
               Cancelar

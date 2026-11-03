@@ -1,10 +1,12 @@
 import { createContext } from "react";
-import type { LoginRequest } from "../types/auth";
+import type { BffUser, Role } from "../types/auth";
 
 export interface AuthContextValue {
-  token: string | null;
+  user: BffUser | null;
+  isLoading: boolean;
   isAuthenticated: boolean;
-  login: (credentials: LoginRequest) => Promise<void>;
+  hasRole: (...roles: Role[]) => boolean;
+  login: () => void;
   logout: () => void;
 }
 

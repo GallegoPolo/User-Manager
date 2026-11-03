@@ -5,7 +5,6 @@ export interface User {
   createdAt: string;
 }
 
-export interface UserFormData {
+export interface RenameUserData {
   name: string;
-  email: string;
 }

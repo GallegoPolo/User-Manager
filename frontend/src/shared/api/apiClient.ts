@@ -1,29 +1,29 @@
-import { getStoredToken } from "../../features/auth/api/tokenStore";
+export class ApiError extends Error {
+  readonly status: number;
 
-interface RequestOptions extends RequestInit {
-  skipAuth?: boolean;
+  constructor(status: number, url: string) {
+    super(`Erro ${status} em ${url}`);
+    this.status = status;
+  }
 }
 
-async function request<T>(
-  url: string,
-  options: RequestOptions = {},
-): Promise<T> {
-  const { skipAuth, headers, ...rest } = options;
-  const token = getStoredToken();
+async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const { headers, ...rest } = options;
 
-  const finalHeaders: HeadersInit = {
-    "Content-Type": "application/json",
-    ...headers,
-    ...(token && !skipAuth ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
-  const response = await fetch(url, { ...rest, headers: finalHeaders });
+  const response = await fetch(url, {
+    ...rest,
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF": "1",
+      ...headers,
+    },
+  });
 
   if (!response.ok) {
-    throw new Error(`Erro ${response.status} em ${url}`);
+    throw new ApiError(response.status, url);
   }
 
-  // 204 No Content (comum em DELETE) não tem body pra parsear
   if (response.status === 204) return undefined as T;
 
   return response.json();

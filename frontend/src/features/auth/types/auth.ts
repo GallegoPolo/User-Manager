@@ -1,9 +1,9 @@
-export interface LoginRequest {
-    email: string
-    password: string
-  }
-  export interface LoginResponse {
-    accessToken: string
-    tokenType: string
-    expiresIn: number
-  }
+export type Role = "viewer" | "operator";
+
+export interface BffUser {
+  sub: string;
+  name: string | null;
+  email: string | null;
+  roles: string[];
+  logoutUrl: string;
+}

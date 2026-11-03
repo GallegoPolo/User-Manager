@@ -1,17 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import {
-  createUser,
-  deleteUser,
-  getUsers,
-  updateUser,
-} from "../api/UserService";
+import { useAuth } from "../../auth/context/useAuth";
+import { deleteUser, getUsers, renameUser } from "../api/UserService";
 import { UserFormModal } from "../components/UserFormModal";
-import type { User, UserFormData } from "../types/user";
+import type { RenameUserData, User } from "../types/user";
 
 export function UsersPage() {
   const queryClient = useQueryClient();
-  const [modalOpen, setModalOpen] = useState(false);
+  const { hasRole } = useAuth();
+  const canManage = hasRole("operator");
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const {
@@ -23,12 +20,11 @@ export function UsersPage() {
     queryFn: getUsers,
   });
 
-  const saveMutation = useMutation({
-    mutationFn: (data: UserFormData) =>
-      editingUser ? updateUser(editingUser.id, data) : createUser(data),
+  const renameMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: RenameUserData }) => renameUser(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      closeModal();
+      setEditingUser(null);
     },
   });
 
@@ -37,23 +33,8 @@ export function UsersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 
-  function openCreate() {
-    setEditingUser(null);
-    setModalOpen(true);
-  }
-
-  function openEdit(user: User) {
-    setEditingUser(user);
-    setModalOpen(true);
-  }
-
-  function closeModal() {
-    setModalOpen(false);
-    setEditingUser(null);
-  }
-
   function handleDelete(user: User) {
-    if (window.confirm(`Excluir ${user.name}?`)) {
+    if (window.confirm(`Excluir os dados de ${user.name}?`)) {
       deleteMutation.mutate(user.id);
     }
   }
@@ -62,14 +43,11 @@ export function UsersPage() {
     <main className="page">
       <div className="page-header">
         <h1>Usuários</h1>
-        <button type="button" onClick={openCreate}>
-          Novo usuário
-        </button>
       </div>
 
       {isLoading && <p>Carregando...</p>}
       {error && <p className="page-error">Erro ao carregar.</p>}
-      {users?.length === 0 && <p>Nenhum usuário cadastrado.</p>}
+      {users?.length === 0 && <p>Ninguém entrou no sistema ainda.</p>}
 
       {users && users.length > 0 && (
         <table className="data-table">
@@ -78,7 +56,7 @@ export function UsersPage() {
               <th>Nome</th>
               <th>Email</th>
               <th>Criado em</th>
-              <th>Ações</th>
+              {canManage && <th>Ações</th>}
             </tr>
           </thead>
           <tbody>
@@ -87,28 +65,29 @@ export function UsersPage() {
                 <td>{user.name}</td>
                 <td>{user.email}</td>
                 <td>{new Date(user.createdAt).toLocaleDateString("pt-BR")}</td>
-                <td className="table-actions">
-                  <button type="button" onClick={() => openEdit(user)}>
-                    Editar
-                  </button>
-                  <button type="button" onClick={() => handleDelete(user)}>
-                    Excluir
-                  </button>
-                </td>
+                {canManage && (
+                  <td className="table-actions">
+                    <button type="button" onClick={() => setEditingUser(user)}>
+                      Editar nome
+                    </button>
+                    <button type="button" onClick={() => handleDelete(user)}>
+                      Excluir
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       )}
 
-      {modalOpen && (
+      {editingUser && (
         <UserFormModal
-          key={editingUser?.id ?? "create"}
-          open={modalOpen}
+          key={editingUser.id}
           user={editingUser}
-          isSaving={saveMutation.isPending}
-          onClose={closeModal}
-          onSubmit={(data) => saveMutation.mutate(data)}
+          isSaving={renameMutation.isPending}
+          onClose={() => setEditingUser(null)}
+          onSubmit={(data) => renameMutation.mutate({ id: editingUser.id, data })}
         />
       )}
     </main>

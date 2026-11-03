@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="UserManager.Bff.Tests/UserManager.Bff.Tests.csproj" />
+  <Project Path="UserManager.Bff/UserManager.Bff.csproj" />
+</Solution>

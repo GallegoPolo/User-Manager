@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
 import { LoginPage } from "../features/auth/pages/LoginPage";
+import { MePage } from "../features/users/pages/MePage";
 import { UsersPage } from "../features/users/pages/UsersPage";
 import { AuditPage } from "../features/audit/pages/AuditPage";
 import { AppLayout } from "../shared/components/AppLayout";
@@ -12,12 +13,13 @@ export default function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
+          <Route path="/me" element={<MePage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/audit" element={<AuditPage />} />
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/users" replace />} />
+      <Route path="/" element={<Navigate to="/me" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

@@ -8,23 +8,23 @@ Projeto pessoal focado em arquitetura de microsserviços na prática: autentica�
 
 | Serviço | Porta | Responsabilidade |
 |---------|-------|------------------|
-| **AuthService** | `5149` | Login de admin, JWT, API Keys, hash Argon2id, cache Redis |
-| **UserManager** | `5255` | CRUD de usuários, Domain Events, Outbox, publicação no RabbitMQ |
+| **Keycloak** | `8080` | Identidade: login, cadastro, confirmação de e-mail, papéis (`viewer`, `operator`) |
+| **BFF** | `5080` | Login OIDC no Keycloak, sessão no Redis, cookie `HttpOnly`, repassa `/api/*` com o token |
+| **UserManager** | `5255` | Ficha da pessoa (JIT), agenda, Domain Events, Outbox, publicação no RabbitMQ |
 | **AuditService API** | `7175` | Consulta dos logs de auditoria (MongoDB) |
 | **Audit Worker** | — | Consome eventos do RabbitMQ e grava no MongoDB |
-| **Frontend** | `5173` | React + Vite (login, usuários, auditoria) |
-
-> Admin (AuthService) ≠ User (UserManager). O admin autentica no Auth; os usuários de negócio vivem no UserManager.
+| **Frontend** | `5173` | React + Vite (minha conta, usuários, auditoria) |
+| **AuthService** | `5149` | Legado (login de admin e API Keys); sai na fatia B5 |
 
 ## Arquitetura
 
 ```text
-Frontend (React)
-    |  /api/auth  -> AuthService
-    |  /api/users -> UserManager
-    |  /api/Audit -> AuditService
-    v
-AuthService ── JWT ──> UserManager
+Navegador ── cookie HttpOnly ──> Vite (5173) ──> BFF (5080) ── login OIDC ──> Keycloak (8080)
+                                                   |   sessão (tokens) no Redis
+                                                   |  /api/me, /api/users ── Bearer ──> UserManager
+                                                   |  /api/audit          ── Bearer ──> AuditService API
+                                                   v
+                                              UserManager
                  |
                  | Domain Events + Outbox (mesma transação)
                  v
@@ -165,26 +165,20 @@ O **Move messages** move a fila inteira: um evento inválido volta para `audit_e
 
 O consumidor é idempotente (índice único em `eventId` no MongoDB), então reprocessar uma mensagem que já foi gravada não duplica o log.
 
-> **Em transição (frente B):** o UserManager já usa o Keycloak, mas o frontend ainda faz login pelo AuthService. Até o BFF (B3) a tela de usuários não funciona; use o `UserManager.Api.http` com um token do Keycloak.
+### Login
 
-### Login padrão (bootstrap)
-
-- **E-mail:** `admin@authservice.com`  
-- **Senha:** `Admin@123456`
+Abra http://localhost:5173 e clique em **Entrar**: o login acontece na tela do Keycloak (pessoas de teste na seção "Identidade", ou crie uma conta e confirme o e-mail no Mailpit). O navegador nunca recebe token: só o cookie `__Host-user-manager` (`HttpOnly`, `Secure`, `SameSite=Strict`), e F5 não desloga.
 
 ## Frontend
 
 Organização feature-first:
 
-- `features/auth` — login, JWT em memória, rotas protegidas  
-- `features/users` — CRUD de usuários  
+- `features/auth` — sessão do BFF (`/bff/user`), login e logout por redirecionamento, rotas protegidas  
+- `features/users` — minha conta (`/api/me`) e lista de usuários (`viewer`/`operator`; editar nome e excluir só `operator`)  
 - `features/audit` — listagem da trilha de auditoria  
-- `shared` — layout, sidebar, api client  
+- `shared` — layout, sidebar, api client (manda `X-CSRF: 1` em toda chamada)  
 
-Proxy do Vite:
-- `/api/auth` → AuthService (`5149`)
-- `/api/users` → UserManager (`5255`)
-- `/api/Audit` → AuditService (`7175`)
+Proxy do Vite: `/api`, `/bff`, `/signin-oidc` e `/signout-callback-oidc` → BFF (`5080`), preservando o `Host` para o navegador ver uma origem só.
 
 ## Backend (pontos importantes)
 
