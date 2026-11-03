@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="../UserManager/UserManager.Contracts/UserManager.Contracts.csproj" />
+  <Project Path="AuditService.Api.IntegrationTests/AuditService.Api.IntegrationTests.csproj" />
   <Project Path="AuditService.Api/AuditService.Api.csproj" Id="92a109f8-c757-4ba5-83d7-74765cf088bb" />
   <Project Path="AuditService.Application/AuditService.Application.csproj" Id="90891cc4-e761-4560-97af-9d19ef55519f" />
   <Project Path="AuditService.Domain/AuditService.Domain.csproj" Id="766bbb2d-bb78-4801-ab64-1edce2d08307" />

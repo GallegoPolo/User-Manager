@@ -12,24 +12,24 @@ public static class IntegrationEventMapper
     private const string ContactAggregate = "Contact";
 
     public static Result<AuditLog> ToAuditLog(UserCreated message) =>
-        ToUserAuditLog(message.EventId, message.OccurredAt, message.UserId, EEventType.UserCreated, message.Name, message.Email);
+        ToUserAuditLog(message.EventId, message.OccurredAt, message.UserId, EEventType.UserCreated, message.Name, message.Email, message.PerformedBy);
 
     public static Result<AuditLog> ToAuditLog(UserUpdated message) =>
-        ToUserAuditLog(message.EventId, message.OccurredAt, message.UserId, EEventType.UserUpdated, message.Name, message.Email);
+        ToUserAuditLog(message.EventId, message.OccurredAt, message.UserId, EEventType.UserUpdated, message.Name, message.Email, message.PerformedBy);
 
     public static Result<AuditLog> ToAuditLog(UserDeleted message) =>
-        ToUserAuditLog(message.EventId, message.OccurredAt, message.UserId, EEventType.UserDeleted, message.Name, message.Email);
+        ToUserAuditLog(message.EventId, message.OccurredAt, message.UserId, EEventType.UserDeleted, message.Name, message.Email, message.PerformedBy);
 
     public static Result<AuditLog> ToAuditLog(ContactCreated message) =>
-        ToContactAuditLog(message.EventId, message.OccurredAt, message.ContactId, EEventType.ContactCreated, message.OwnerId, message.Name, message.Email, message.Phone);
+        ToContactAuditLog(message.EventId, message.OccurredAt, message.ContactId, EEventType.ContactCreated, message.OwnerId, message.Name, message.Email, message.Phone, message.PerformedBy);
 
     public static Result<AuditLog> ToAuditLog(ContactUpdated message) =>
-        ToContactAuditLog(message.EventId, message.OccurredAt, message.ContactId, EEventType.ContactUpdated, message.OwnerId, message.Name, message.Email, message.Phone);
+        ToContactAuditLog(message.EventId, message.OccurredAt, message.ContactId, EEventType.ContactUpdated, message.OwnerId, message.Name, message.Email, message.Phone, message.PerformedBy);
 
     public static Result<AuditLog> ToAuditLog(ContactDeleted message) =>
-        ToContactAuditLog(message.EventId, message.OccurredAt, message.ContactId, EEventType.ContactDeleted, message.OwnerId, message.Name, message.Email, message.Phone);
+        ToContactAuditLog(message.EventId, message.OccurredAt, message.ContactId, EEventType.ContactDeleted, message.OwnerId, message.Name, message.Email, message.Phone, message.PerformedBy);
 
-    private static Result<AuditLog> ToUserAuditLog(Guid eventId, DateTimeOffset occurredAt, Guid userId, EEventType eventType, string name, string email)
+    private static Result<AuditLog> ToUserAuditLog(Guid eventId, DateTimeOffset occurredAt, Guid userId, EEventType eventType, string name, string email, Guid? performedBy)
     {
         if (userId == Guid.Empty)
             return Result<AuditLog>.Failure($"EventId {eventId}: UserId não pode ser vazio.");
@@ -39,7 +39,7 @@ public static class IntegrationEventMapper
 
         var payload = new Dictionary<string, object> { ["UserName"] = name, ["UserEmail"] = email };
 
-        return Create(eventId, occurredAt, userId, UserAggregate, eventType, payload);
+        return Create(eventId, occurredAt, userId, UserAggregate, eventType, payload, performedBy);
     }
 
     private static Result<AuditLog> ToContactAuditLog(Guid eventId,
@@ -49,7 +49,8 @@ public static class IntegrationEventMapper
                                                       Guid ownerId,
                                                       string name,
                                                       string? email,
-                                                      string? phone)
+                                                      string? phone,
+                                                      Guid? performedBy)
     {
         if (contactId == Guid.Empty)
             return Result<AuditLog>.Failure($"EventId {eventId}: ContactId não pode ser vazio.");
@@ -65,7 +66,7 @@ public static class IntegrationEventMapper
         if (phone is not null)
             payload["Phone"] = phone;
 
-        return Create(eventId, occurredAt, contactId, ContactAggregate, eventType, payload);
+        return Create(eventId, occurredAt, contactId, ContactAggregate, eventType, payload, performedBy);
     }
 
     private static Result<AuditLog> Create(Guid eventId,
@@ -73,7 +74,8 @@ public static class IntegrationEventMapper
                                            Guid aggregateId,
                                            string aggregateType,
                                            EEventType eventType,
-                                           Dictionary<string, object> payload)
+                                           Dictionary<string, object> payload,
+                                           Guid? performedBy)
     {
         if (eventId == Guid.Empty)
             return Result<AuditLog>.Failure("EventId não pode ser vazio.");
@@ -82,7 +84,7 @@ public static class IntegrationEventMapper
                                                         aggregateId.ToString(),
                                                         aggregateType,
                                                         eventType,
-                                                        SystemActor,
+                                                        performedBy?.ToString() ?? SystemActor,
                                                         occurredAt.UtcDateTime,
                                                         payload));
     }

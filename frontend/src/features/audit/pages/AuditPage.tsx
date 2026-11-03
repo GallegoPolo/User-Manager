@@ -24,6 +24,7 @@ export function AuditPage() {
               <th>Tipo</th>
               <th>Data</th>
               <th>Aggregate ID</th>
+              <th>Quem fez</th>
             </tr>
           </thead>
           <tbody>
@@ -32,6 +33,7 @@ export function AuditPage() {
                 <td>{log.eventType}</td>
                 <td>{new Date(log.timestamp).toLocaleString("pt-BR")}</td>
                 <td>{log.aggregateId}</td>
+                <td>{log.performedBy}</td>
               </tr>
             ))}
           </tbody>

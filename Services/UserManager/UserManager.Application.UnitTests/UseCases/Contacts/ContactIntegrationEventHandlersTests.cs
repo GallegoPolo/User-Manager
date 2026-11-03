@@ -8,6 +8,8 @@ namespace UserManager.Application.UnitTests.UseCases.Contacts;
 
 public sealed class ContactIntegrationEventHandlersTests
 {
+    private static readonly Guid ActorId = Guid.NewGuid();
+
     [Fact]
     public async Task ContactCreated_PublishesContactCreatedIntegrationEvent()
     {
@@ -16,7 +18,7 @@ public sealed class ContactIntegrationEventHandlersTests
         var domainEvent = new ContactCreatedDomainEvent(Guid.NewGuid(), Guid.NewGuid(), "Ana", "ana@example.com", null);
 
         // Act
-        await new ContactCreatedIntegrationEventHandler(publisher).Handle(new DomainEventNotification<ContactCreatedDomainEvent>(domainEvent), CancellationToken.None);
+        await new ContactCreatedIntegrationEventHandler(publisher, new FakeCurrentUser().ProvisionedAs(ActorId)).Handle(new DomainEventNotification<ContactCreatedDomainEvent>(domainEvent), CancellationToken.None);
 
         // Assert
         var published = Assert.Single(publisher.Published);
@@ -29,7 +31,8 @@ public sealed class ContactIntegrationEventHandlersTests
             OwnerId = domainEvent.OwnerId,
             Name = "Ana",
             Email = "ana@example.com",
-            Phone = null
+            Phone = null,
+            PerformedBy = ActorId
         }, published.Message);
     }
 
@@ -41,7 +44,7 @@ public sealed class ContactIntegrationEventHandlersTests
         var domainEvent = new ContactUpdatedDomainEvent(Guid.NewGuid(), Guid.NewGuid(), "Ana", null, "11987654321");
 
         // Act
-        await new ContactUpdatedIntegrationEventHandler(publisher).Handle(new DomainEventNotification<ContactUpdatedDomainEvent>(domainEvent), CancellationToken.None);
+        await new ContactUpdatedIntegrationEventHandler(publisher, new FakeCurrentUser().ProvisionedAs(ActorId)).Handle(new DomainEventNotification<ContactUpdatedDomainEvent>(domainEvent), CancellationToken.None);
 
         // Assert
         var published = Assert.Single(publisher.Published);
@@ -54,7 +57,8 @@ public sealed class ContactIntegrationEventHandlersTests
             OwnerId = domainEvent.OwnerId,
             Name = "Ana",
             Email = null,
-            Phone = "11987654321"
+            Phone = "11987654321",
+            PerformedBy = ActorId
         }, published.Message);
     }
 
@@ -66,7 +70,7 @@ public sealed class ContactIntegrationEventHandlersTests
         var domainEvent = new ContactDeletedDomainEvent(Guid.NewGuid(), Guid.NewGuid(), "Ana", "ana@example.com", "11987654321");
 
         // Act
-        await new ContactDeletedIntegrationEventHandler(publisher).Handle(new DomainEventNotification<ContactDeletedDomainEvent>(domainEvent), CancellationToken.None);
+        await new ContactDeletedIntegrationEventHandler(publisher, new FakeCurrentUser().ProvisionedAs(ActorId)).Handle(new DomainEventNotification<ContactDeletedDomainEvent>(domainEvent), CancellationToken.None);
 
         // Assert
         var published = Assert.Single(publisher.Published);
@@ -79,7 +83,8 @@ public sealed class ContactIntegrationEventHandlersTests
             OwnerId = domainEvent.OwnerId,
             Name = "Ana",
             Email = "ana@example.com",
-            Phone = "11987654321"
+            Phone = "11987654321",
+            PerformedBy = ActorId
         }, published.Message);
     }
 }

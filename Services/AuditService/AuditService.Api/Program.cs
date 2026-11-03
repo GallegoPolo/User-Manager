@@ -25,6 +25,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddAuditServices(builder.Configuration);
+builder.Services.AddKeycloakAuthentication(builder.Configuration);
+builder.AddObservability();
 
 builder.Services.AddHealthChecks()
     .AddCheck<MongoDbHealthCheck>("mongodb", tags: new[] { "ready" });
@@ -49,13 +51,16 @@ else
     app.UseHttpsRedirection();
 }
 
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/live").AllowAnonymous();
 app.MapHealthChecks("/health/ready", new()
 {
     Predicate = check => check.Tags.Contains("ready")
-});
+}).AllowAnonymous();
 
 app.Run();
+
+public partial class Program;

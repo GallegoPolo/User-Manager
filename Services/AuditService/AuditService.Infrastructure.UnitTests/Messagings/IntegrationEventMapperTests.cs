@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AuditService.Domain.Enums;
 using AuditService.Infrastructure.Messagings;
 using UserManager.Contracts;
@@ -188,5 +189,46 @@ public sealed class IntegrationEventMapperTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Contains("ContactId", result.Error);
+    }
+
+    [Fact]
+    public void ToAuditLog_UserCreatedWithPerformedBy_RecordsActor()
+    {
+        // Arrange
+        var actor = Guid.NewGuid();
+
+        // Act
+        var result = IntegrationEventMapper.ToAuditLog(new UserCreated { EventId = EventId, OccurredAt = OccurredAt, UserId = UserId, Name = "Ana", Email = "ana@example.com", PerformedBy = actor });
+
+        // Assert
+        Assert.Equal(actor.ToString(), result.Data!.PerformedBy);
+    }
+
+    [Fact]
+    public void ToAuditLog_ContactDeletedWithPerformedBy_RecordsActor()
+    {
+        // Arrange
+        var actor = Guid.NewGuid();
+
+        // Act
+        var result = IntegrationEventMapper.ToAuditLog(new ContactDeleted { EventId = EventId, OccurredAt = OccurredAt, ContactId = ContactId, OwnerId = UserId, Name = "Bruno", PerformedBy = actor });
+
+        // Assert
+        Assert.Equal(actor.ToString(), result.Data!.PerformedBy);
+    }
+
+    [Fact]
+    public void ToAuditLog_MessageWithoutPerformedBy_RecordsSystem()
+    {
+        // Arrange
+        var oldMessage = $$"""{"eventId":"{{EventId}}","occurredAt":"2026-11-02T10:30:00+00:00","contactId":"{{ContactId}}","ownerId":"{{UserId}}","name":"Bruno"}""";
+        var message = JsonSerializer.Deserialize<ContactCreated>(oldMessage, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+
+        // Act
+        var result = IntegrationEventMapper.ToAuditLog(message);
+
+        // Assert
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal("system", result.Data!.PerformedBy);
     }
 }

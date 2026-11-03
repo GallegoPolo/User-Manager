@@ -1,11 +1,14 @@
 ﻿using AuditService.Application.DTOs;
 using AuditService.Application.UseCases.Queries;
 using AuditService.Domain.Enums;
+using AuditService.Api.Extensions;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuditService.Api.Controllers
 {
+    [Authorize(Policy = IdentityExtensions.AuditRead)]
     [ApiController]
     [Route("api/[controller]")]
     public class AuditController : ControllerBase

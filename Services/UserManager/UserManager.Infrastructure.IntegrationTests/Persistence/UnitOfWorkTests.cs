@@ -7,6 +7,7 @@ using UserManager.Domain.Entities;
 using UserManager.Domain.Interfaces;
 using UserManager.Domain.ValueObjects;
 using UserManager.Infrastructure.IntegrationTests.Fixtures;
+using UserManager.Infrastructure.IntegrationTests.TestDoubles;
 using UserManager.Infrastructure.Messaging;
 using UserManager.Infrastructure.Persistence;
 using UserManager.Infrastructure.Repositories;
@@ -66,6 +67,7 @@ public sealed class UnitOfWorkTests : IClassFixture<PostgresFixture>
             .AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(ProvisionCurrentUserHandler).Assembly))
             .AddScoped<IUnitOfWork, UnitOfWork>()
             .AddScoped<IUserRepository, UserRepository>()
+            .AddScoped<ICurrentUser>(_ => new FixedCurrentUser($"kc-{Guid.NewGuid():N}", "ana@example.com", "Ana"))
             .BuildServiceProvider();
         await using var scope = services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();

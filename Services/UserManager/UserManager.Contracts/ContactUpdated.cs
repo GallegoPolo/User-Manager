@@ -9,4 +9,5 @@ public sealed record ContactUpdated
     public required string Name { get; init; }
     public string? Email { get; init; }
     public string? Phone { get; init; }
+    public Guid? PerformedBy { get; init; }
 }
