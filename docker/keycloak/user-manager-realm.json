@@ -18,6 +18,76 @@
     "ssl": "false",
     "starttls": "false"
   },
+  "authenticatorConfig": [
+    {
+      "alias": "vinculo por senha - revisar perfil",
+      "config": { "update.profile.on.first.login": "missing" }
+    },
+    {
+      "alias": "vinculo por senha - criar pessoa",
+      "config": { "require.password.update.after.registration": "false" }
+    }
+  ],
+  "authenticationFlows": [
+    {
+      "alias": "first broker login por senha",
+      "description": "Primeiro login por provedor externo; conta existente só é vinculada com a senha dela",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "idp-review-profile", "authenticatorConfig": "vinculo por senha - revisar perfil", "requirement": "REQUIRED", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
+        { "flowAlias": "vinculo por senha - criar ou vincular", "requirement": "REQUIRED", "priority": 20, "authenticatorFlow": true, "userSetupAllowed": false }
+      ]
+    },
+    {
+      "alias": "vinculo por senha - criar ou vincular",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "idp-create-user-if-unique", "authenticatorConfig": "vinculo por senha - criar pessoa", "requirement": "ALTERNATIVE", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
+        { "flowAlias": "vinculo por senha - conta existente", "requirement": "ALTERNATIVE", "priority": 20, "authenticatorFlow": true, "userSetupAllowed": false }
+      ]
+    },
+    {
+      "alias": "vinculo por senha - conta existente",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "idp-confirm-link", "requirement": "REQUIRED", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
+        { "authenticator": "idp-username-password-form", "requirement": "REQUIRED", "priority": 20, "authenticatorFlow": false, "userSetupAllowed": false },
+        { "flowAlias": "vinculo por senha - 2FA condicional", "requirement": "CONDITIONAL", "priority": 30, "authenticatorFlow": true, "userSetupAllowed": false }
+      ]
+    },
+    {
+      "alias": "vinculo por senha - 2FA condicional",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        { "authenticator": "conditional-user-configured", "requirement": "REQUIRED", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
+        { "authenticator": "auth-otp-form", "requirement": "ALTERNATIVE", "priority": 20, "authenticatorFlow": false, "userSetupAllowed": false }
+      ]
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "github",
+      "displayName": "GitHub",
+      "providerId": "github",
+      "enabled": "${GITHUB_ENABLED:false}",
+      "trustEmail": false,
+      "storeToken": false,
+      "firstBrokerLoginFlowAlias": "first broker login por senha",
+      "config": {
+        "clientId": "${GITHUB_CLIENT_ID:nao-configurado}",
+        "clientSecret": "${GITHUB_CLIENT_SECRET:nao-configurado}",
+        "syncMode": "IMPORT"
+      }
+    }
+  ],
   "roles": {
     "realm": [
       {

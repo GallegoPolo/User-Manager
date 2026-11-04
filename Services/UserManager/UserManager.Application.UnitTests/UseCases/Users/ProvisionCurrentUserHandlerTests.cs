@@ -65,6 +65,22 @@ public sealed class ProvisionCurrentUserHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenAnotherSubHasSameEmail_ProvisionsSeparateUser()
+    {
+        // Arrange
+        var existing = User.Provision("kc-ana", "Ana", Email.Create("ana@example.com"));
+        _users.With(existing);
+
+        // Act
+        var result = await Handle(new FakeCurrentUser { IdentityProviderId = "kc-outra", Email = "ana@example.com" });
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotEqual(existing.Id, result.Value);
+        Assert.Equal(2, _users.Users.Count);
+    }
+
+    [Fact]
     public async Task Handle_WithoutNameClaim_UsesEmailAsName()
     {
         // Act

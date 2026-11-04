@@ -97,6 +97,9 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HEALTH_ENABLED: "true"
+      GITHUB_ENABLED: ${GITHUB_ENABLED:-false}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-nao-configurado}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-nao-configurado}
     ports:
       - "8080:8080"
     volumes:

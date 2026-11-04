@@ -11,9 +11,11 @@ public sealed class KeycloakFixture : IAsyncLifetime
 {
     public const string RealmName = "user-manager";
     public const string BffClientId = "user-manager-bff";
-    private const string BffClientSecret = "user-manager-bff-dev-secret";
+    public const string Image = "quay.io/keycloak/keycloak:26.8.1";
+    public const string BffClientSecret = "user-manager-bff-dev-secret";
+    public const string BffRedirectUri = "http://localhost:5173/signin-oidc";
 
-    private readonly KeycloakContainer _container = new KeycloakBuilder("quay.io/keycloak/keycloak:26.8.1")
+    private readonly KeycloakContainer _container = new KeycloakBuilder(Image)
         .WithRealm(Path.Combine(AppContext.BaseDirectory, "Identity", "user-manager-realm.json"))
         .Build();
 
@@ -23,6 +25,26 @@ public sealed class KeycloakFixture : IAsyncLifetime
     public JsonElement Realm { get; private set; }
 
     public JsonElement BffClientAsImported { get; private set; }
+
+    public string KeycloakUrl => _container.GetBaseAddress().TrimEnd('/');
+
+    public Task<JsonElement> GetIdentityProviderAsync(string alias) =>
+        _admin.GetFromJsonAsync<JsonElement>($"admin/realms/{RealmName}/identity-provider/instances/{alias}");
+
+    public async Task<IReadOnlyList<string>> GetTopLevelFlowAliasesAsync()
+    {
+        var flows = await _admin.GetFromJsonAsync<JsonElement>($"admin/realms/{RealmName}/authentication/flows");
+        return flows.EnumerateArray().Select(flow => flow.GetProperty("alias").GetString()!).ToList();
+    }
+
+    public async Task<IReadOnlyList<string>> GetAuthenticatorsOfFlowAsync(string alias)
+    {
+        var executions = await _admin.GetFromJsonAsync<JsonElement>($"admin/realms/{RealmName}/authentication/flows/{Uri.EscapeDataString(alias)}/executions");
+        return executions.EnumerateArray()
+            .Where(execution => execution.TryGetProperty("providerId", out _))
+            .Select(execution => execution.GetProperty("providerId").GetString()!)
+            .ToList();
+    }
 
     public async Task InitializeAsync()
     {

@@ -128,6 +128,43 @@ docker volume rm user-manager_keycloakdata
 docker compose up -d keycloak
 ```
 
+Isso apaga as contas criadas no Keycloak, e as pessoas de teste ganham um `sub` novo: no próximo login o UserManager cria outra ficha, e a ficha e a agenda antigas ficam sem dono no banco local.
+
+### Login com GitHub (opcional)
+
+Sem configuração nenhuma, tudo sobe normalmente: o botão do GitHub não aparece e o login por e-mail e senha funciona. Para ligar:
+
+1. No GitHub, abra **Settings → Developer settings → OAuth Apps → New OAuth App** e preencha:
+   - **Homepage URL:** `http://localhost:5173`
+   - **Authorization callback URL:** `http://localhost:8080/realms/user-manager/broker/github/endpoint`
+2. Clique em **Register application**, depois em **Generate a new client secret**, e anote o **Client ID** e o **Client secret**.
+3. Na raiz do repositório, copie o exemplo e preencha. O `.env` é ignorado pelo git; nunca versione o secret.
+   ```bash
+   cp .env.example .env
+   ```
+   ```env
+   GITHUB_ENABLED=true
+   GITHUB_CLIENT_ID=<client id>
+   GITHUB_CLIENT_SECRET=<client secret>
+   ```
+   Use só `true` ou `false` em `GITHUB_ENABLED`: outro valor, como `yes` ou `1`, faz a importação da realm falhar e o Keycloak não sobe. Com `true`, preencha também o id e o secret.
+4. Recrie o banco do Keycloak com os comandos da seção anterior, porque a realm só é importada quando ainda não existe. O mesmo vale para trocar o secret ou voltar para `false` no `.env`: sem recriar, nada muda no Keycloak.
+
+Como o login se comporta:
+
+| Situação | O que acontece |
+|----------|----------------|
+| Primeiro login, e-mail novo | O Keycloak cria a conta e pede a confirmação do e-mail, que chega no Mailpit (http://localhost:8025) |
+| E-mail ou username que já têm conta | Nada é vinculado sozinho: o vínculo exige a **senha da conta** no próprio navegador. O `sub` continua o da conta existente |
+| GitHub sem nome ou com nome de uma palavra | O Keycloak pede nome e sobrenome antes de continuar |
+| Logins seguintes | Entra direto, com o mesmo `sub` |
+
+O vínculo não usa o e-mail de confirmação porque quem pede e quem clica podem ser pessoas diferentes: um atacante pediria o vínculo com a conta da vítima, a vítima clicaria no link recebido, e o atacante passaria a entrar na conta dela.
+
+O **Trust Email** fica desligado porque o provedor do GitHub no Keycloak usa o e-mail primário sem conferir se ele foi verificado.
+
+**Risco conhecido:** se o GitHub deixar entrar com um e-mail primário não verificado, um atacante consegue criar aqui uma conta com o e-mail da vítima, ligada ao GitHub dele. Enquanto a conta não for confirmada, ele não recebe token. Mas, se a vítima clicar no link de confirmação ou usar "esqueci a senha", a conta passa a valer e continua ligada ao atacante. Antes de dar um papel a alguém, confira em **Users → Identity provider links** no console do Keycloak.
+
 ### 2. Migrations
 
 ```bash
