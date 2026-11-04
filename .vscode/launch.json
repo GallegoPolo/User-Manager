@@ -2,19 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Auth Service",
-      "type": "coreclr",
-      "request": "launch",
-      "program": "${workspaceFolder}/Services/AuthService/AuthService.Api/bin/Debug/net10.0/AuthService.Api.dll",
-      "cwd": "${workspaceFolder}/Services/AuthService/AuthService.Api",
-      "stopAtEntry": false,
-      "console": "internalConsole",
-      "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_URLS": "http://localhost:5149"
-      }
-    },
-    {
       "name": "User Manager",
       "type": "coreclr",
       "request": "launch",
@@ -57,7 +44,6 @@
     {
       "name": "🚀 All Backend Services",
       "configurations": [
-        "Auth Service",
         "User Manager",
         "Audit Api",
         "Audit Worker"

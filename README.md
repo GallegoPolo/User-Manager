@@ -2,7 +2,7 @@
 
 Painel administrativo full-stack para gestão de usuários e auditoria de ações.
 
-Projeto pessoal focado em arquitetura de microsserviços na prática: autenticação JWT, CRUD de usuários, Domain Events, padrão Outbox, mensageria com RabbitMQ e trilha de auditoria em MongoDB.
+Projeto pessoal focado em arquitetura de microsserviços na prática: identidade com Keycloak e BFF, CRUD de usuários, Domain Events, padrão Outbox, mensageria com RabbitMQ e trilha de auditoria em MongoDB.
 
 ## Visão geral
 
@@ -14,7 +14,6 @@ Projeto pessoal focado em arquitetura de microsserviços na prática: autentica�
 | **AuditService API** | `7175` | Consulta dos logs de auditoria (MongoDB) |
 | **Audit Worker** | — | Consome eventos do RabbitMQ e grava no MongoDB |
 | **Frontend** | `5173` | React + Vite (minha conta, usuários, auditoria) |
-| **AuthService** | `5149` | Legado (login de admin e API Keys); sai na fatia B5 |
 
 ## Arquitetura
 
@@ -54,8 +53,9 @@ Fluxo resumido do Create/Update/Delete de usuário:
 - EF Core + PostgreSQL
 - MediatR
 - FluentValidation
-- JWT + Argon2id
-- Redis
+- Keycloak (OpenID Connect, JWT)
+- BFF com YARP
+- Redis (sessão do BFF)
 - RabbitMQ + MassTransit 8 (Outbox do EF Core, retry, fila de erro)
 - MongoDB
 - Polly
@@ -88,7 +88,7 @@ docker compose up -d
 ```
 
 Sobe:
-- PostgreSQL (`5432`) — databases `AuthService_Dev` e `UserManager_Dev`
+- PostgreSQL (`5432`) — database `UserManager_Dev`
 - Redis (`6379`)
 - RabbitMQ (`5672` / painel `15672`)
 - MongoDB (`27017`)
@@ -145,7 +145,7 @@ npm run dev
 
 Isso:
 1. Faz build dos serviços .NET  
-2. Sobe Auth, UserManager, Audit API, Audit Worker e o frontend juntos  
+2. Sobe UserManager, Audit API, Audit Worker, BFF e o frontend juntos  
 
 Frontend: http://localhost:5173
 
@@ -182,13 +182,6 @@ Proxy do Vite: `/api`, `/bff`, `/signin-oidc` e `/signout-callback-oidc` → BFF
 
 ## Backend (pontos importantes)
 
-### AuthService
-- Login de administrador
-- Emissão de JWT
-- Hash de senha com **Argon2id** + salt
-- API Keys (com cache no Redis)
-- Bootstrap automático do admin inicial
-
 ### UserManager
 - Aceita só tokens do Keycloak (realm `user-manager`, audience `user-manager-api`), conferidos com a chave pública
 - O `User` nasce no primeiro acesso (**JIT provisioning**), ligado à pessoa pelo `sub` do token (`IdentityProviderId`); duas requisições simultâneas criam um só `User`
@@ -207,7 +200,6 @@ Proxy do Vite: `/api`, `/bff`, `/signin-oidc` e `/signout-callback-oidc` → BFF
 ## Swagger
 
 Com os serviços no ar:
-- Auth: http://localhost:5149/swagger  
 - Users: http://localhost:5255/swagger  
 - Audit: http://localhost:7175/swagger  
 
@@ -237,7 +229,7 @@ User-Manager/
 ├── docker/
 ├── frontend/
 ├── Services/
-│   ├── AuthService/
+│   ├── Bff/
 │   ├── UserManager/
 │   └── AuditService/
 └── package.json
@@ -245,12 +237,11 @@ User-Manager/
 
 ## Roadmap (próximos passos)
 
+O plano e o status ficam em [ROADMAP.md](ROADMAP.md).
+
 - [ ] README com diagramas e screenshots finais
-- [ ] JWT obrigatório de ponta a ponta no UserManager (se ainda houver gap)
-- [ ] Pepper no Argon2
-- [ ] Logout + blacklist de JWT no Redis
 - [ ] Polimento visual do frontend
-- [ ] API Gateway (YARP)
+- [ ] Gateway para clientes máquina
 
 ## Autor
 
