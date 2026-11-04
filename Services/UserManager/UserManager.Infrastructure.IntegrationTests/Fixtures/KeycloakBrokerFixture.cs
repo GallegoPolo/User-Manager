@@ -13,6 +13,10 @@ namespace UserManager.Infrastructure.IntegrationTests.Fixtures;
 
 public sealed partial class KeycloakBrokerFixture : IAsyncLifetime
 {
+    public const string GoogleClientId = "fake-google-client-id";
+    public const string PersonWithOtpEmail = "tina@user-manager.local";
+    public const string PersonForResetEmail = "rita@user-manager.local";
+
     private const string RealmName = KeycloakFixture.RealmName;
     private const string FakeGitHubUrl = "http://fake-github:8080";
     private const string FakeClientId = "fake-client-id";
@@ -52,6 +56,9 @@ public sealed partial class KeycloakBrokerFixture : IAsyncLifetime
             .WithEnvironment("GITHUB_ENABLED", "true")
             .WithEnvironment("GITHUB_CLIENT_ID", FakeClientId)
             .WithEnvironment("GITHUB_CLIENT_SECRET", FakeClientSecret)
+            .WithEnvironment("GOOGLE_ENABLED", "true")
+            .WithEnvironment("GOOGLE_CLIENT_ID", GoogleClientId)
+            .WithEnvironment("GOOGLE_CLIENT_SECRET", FakeClientSecret)
             .Build();
     }
 
@@ -202,6 +209,27 @@ public sealed partial class KeycloakBrokerFixture : IAsyncLifetime
         var gitHub = realm["identityProviders"]!.AsArray().Single(provider => provider!["alias"]!.GetValue<string>() == "github")!;
         gitHub["config"]!["baseUrl"] = FakeGitHubUrl;
         gitHub["config"]!["apiUrl"] = FakeGitHubUrl;
+
+        var users = realm["users"]!.AsArray();
+        users.Add(JsonNode.Parse($$"""
+        {
+          "username": "tina", "email": "{{PersonWithOtpEmail}}", "emailVerified": true,
+          "firstName": "Tina", "lastName": "Otp", "enabled": true,
+          "credentials": [
+            { "type": "password", "value": "tina123", "temporary": false },
+            { "type": "otp", "userLabel": "app",
+              "secretData": "{\"value\":\"JBSWY3DPEHPK3PXP\"}",
+              "credentialData": "{\"subType\":\"totp\",\"digits\":6,\"counter\":0,\"period\":30,\"algorithm\":\"HmacSHA1\"}" }
+          ]
+        }
+        """));
+        users.Add(JsonNode.Parse($$"""
+        {
+          "username": "rita", "email": "{{PersonForResetEmail}}", "emailVerified": true,
+          "firstName": "Rita", "lastName": "Reis", "enabled": true,
+          "credentials": [ { "type": "password", "value": "rita123", "temporary": false } ]
+        }
+        """));
 
         var path = Path.Combine(_realmDirectory, "user-manager-realm.json");
         File.WriteAllText(path, realm.ToJsonString());

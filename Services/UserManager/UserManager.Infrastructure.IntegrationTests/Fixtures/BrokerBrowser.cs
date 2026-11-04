@@ -26,13 +26,19 @@ public sealed partial class BrokerBrowser : IDisposable
 
     public string? AuthorizationCode { get; private set; }
 
-    public async Task SignInWithGitHubAsync()
+    public async Task<Uri> ClickProviderButtonAsync(string alias)
     {
         await OpenLoginPageAsync();
 
-        var startBroker = await SendAsync(HttpMethod.Get, Absolute(GitHubButtonHref()));
-        var authorize = startBroker.Headers.Location
-            ?? throw new InvalidOperationException($"Sem redirecionamento para o GitHub: {startBroker.StatusCode}");
+        var startBroker = await SendAsync(HttpMethod.Get, Absolute(ProviderButtonHref(alias)));
+
+        return startBroker.Headers.Location
+            ?? throw new InvalidOperationException($"Sem redirecionamento para {alias}: {startBroker.StatusCode}");
+    }
+
+    public async Task SignInWithGitHubAsync()
+    {
+        var authorize = await ClickProviderButtonAsync("github");
         var state = QueryValue(authorize, "state");
 
         await NavigateAsync($"{_keycloakUrl}/realms/{KeycloakFixture.RealmName}/broker/github/endpoint?code=fake-code&state={Uri.EscapeDataString(state)}");
@@ -51,6 +57,15 @@ public sealed partial class BrokerBrowser : IDisposable
     }
 
     public Task OpenLinkAsync(string url) => NavigateAsync(url);
+
+    public async Task ClickForgotPasswordAsync()
+    {
+        var match = ForgotPasswordLink().Match(Html);
+        if (!match.Success)
+            throw new InvalidOperationException("A página atual não tem o link de esqueci a senha.");
+
+        await NavigateAsync(Absolute(WebUtility.HtmlDecode(match.Groups[1].Value)));
+    }
 
     public async Task OpenLoginPageAsync()
     {
@@ -122,11 +137,11 @@ public sealed partial class BrokerBrowser : IDisposable
         }
     }
 
-    private string GitHubButtonHref()
+    private string ProviderButtonHref(string alias)
     {
-        var match = GitHubButton().Match(Html);
+        var match = Regex.Match(Html, $@"id=""social-{alias}""[^>]*?href=""([^""]+)""", RegexOptions.Singleline);
         if (!match.Success)
-            throw new InvalidOperationException("A tela de login não tem o botão do GitHub.");
+            throw new InvalidOperationException($"A tela de login não tem o botão de {alias}.");
 
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }
@@ -143,8 +158,8 @@ public sealed partial class BrokerBrowser : IDisposable
         return Uri.UnescapeDataString(pair[(name.Length + 1)..]);
     }
 
-    [GeneratedRegex(@"id=""social-github""[^>]*?href=""([^""]+)""", RegexOptions.Singleline)]
-    private static partial Regex GitHubButton();
+    [GeneratedRegex(@"href=""([^""]*reset-credentials[^""]*)""")]
+    private static partial Regex ForgotPasswordLink();
 
     [GeneratedRegex(@"<form[^>]*?action=""([^""]+)""", RegexOptions.Singleline)]
     private static partial Regex FormAction();

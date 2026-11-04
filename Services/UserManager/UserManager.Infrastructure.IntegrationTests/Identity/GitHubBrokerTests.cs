@@ -2,7 +2,8 @@ using UserManager.Infrastructure.IntegrationTests.Fixtures;
 
 namespace UserManager.Infrastructure.IntegrationTests.Identity;
 
-public sealed class GitHubBrokerTests : IClassFixture<KeycloakBrokerFixture>
+[Collection(nameof(KeycloakBrokerCollection))]
+public sealed class GitHubBrokerTests
 {
     private readonly KeycloakBrokerFixture _keycloak;
 
@@ -138,6 +139,57 @@ public sealed class GitHubBrokerTests : IClassFixture<KeycloakBrokerFixture>
         Assert.Contains("name=\"password\"", browser.Html);
         Assert.Equal(0, await _keycloak.CountMailsToAsync(ottoEmail));
         Assert.Equal(0, await _keycloak.CountFederatedIdentitiesAsync(otto.GetProperty("id").GetString()!));
+    }
+
+    [Fact]
+    public async Task ExistingAccountWithOtp_IsNotLinkedWithPasswordAndWrongCode()
+    {
+        // Arrange
+        const string email = KeycloakBrokerFixture.PersonWithOtpEmail;
+        await _keycloak.GitHubAnswersAsAsync(1009, "tina-gh", "Tina Otp", email);
+        using var browser = new BrokerBrowser(_keycloak.KeycloakUrl);
+        var tina = await _keycloak.FindUserByEmailAsync(email);
+        await browser.SignInWithGitHubAsync();
+        await browser.SubmitFirstFormAsync(("submitAction", "linkAccount"));
+
+        // Act
+        await browser.SubmitFirstFormAsync(("username", "tina"), ("password", "tina123"));
+
+        // Assert
+        Assert.Null(browser.AuthorizationCode);
+        Assert.Contains("name=\"otp\"", browser.Html);
+        Assert.Equal(0, await _keycloak.CountFederatedIdentitiesAsync(tina.GetProperty("id").GetString()!));
+
+        // Act
+        await browser.SubmitFirstFormAsync(("otp", "000000"));
+
+        // Assert
+        Assert.Null(browser.AuthorizationCode);
+        Assert.Equal(0, await _keycloak.CountFederatedIdentitiesAsync(tina.GetProperty("id").GetString()!));
+    }
+
+    [Fact]
+    public async Task PasswordResetAskedDuringLink_WhenOwnerFinishesIt_DoesNotLinkAttacker()
+    {
+        // Arrange
+        const string email = KeycloakBrokerFixture.PersonForResetEmail;
+        await _keycloak.GitHubAnswersAsAsync(1010, "falsa-rita", "Falsa Rita", email);
+        using var attacker = new BrokerBrowser(_keycloak.KeycloakUrl);
+        var rita = await _keycloak.FindUserByEmailAsync(email);
+        await attacker.SignInWithGitHubAsync();
+        await attacker.SubmitFirstFormAsync(("submitAction", "linkAccount"));
+        await attacker.ClickForgotPasswordAsync();
+        await attacker.SubmitFirstFormAsync(("username", "rita"));
+        using var owner = new BrokerBrowser(_keycloak.KeycloakUrl);
+
+        // Act
+        await owner.OpenLinkAsync(await _keycloak.WaitForActionLinkAsync(email));
+        await owner.SubmitFirstFormAsync(("password-new", "NovaRita123!"), ("password-confirm", "NovaRita123!"));
+        await attacker.OpenLoginPageAsync();
+
+        // Assert
+        Assert.Null(attacker.AuthorizationCode);
+        Assert.Equal(0, await _keycloak.CountFederatedIdentitiesAsync(rita.GetProperty("id").GetString()!));
     }
 
     [Theory]

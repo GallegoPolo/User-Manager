@@ -20,49 +20,49 @@
   },
   "authenticatorConfig": [
     {
-      "alias": "vinculo por senha - revisar perfil",
+      "alias": "vinculo - revisar perfil",
       "config": { "update.profile.on.first.login": "missing" }
     },
     {
-      "alias": "vinculo por senha - criar pessoa",
+      "alias": "vinculo - criar pessoa",
       "config": { "require.password.update.after.registration": "false" }
     }
   ],
   "authenticationFlows": [
     {
-      "alias": "first broker login por senha",
-      "description": "Primeiro login por provedor externo; conta existente só é vinculada com a senha dela",
+      "alias": "first broker login por reautenticacao",
+      "description": "Primeiro login por provedor externo; conta existente só é vinculada com reautenticação, nunca por e-mail",
       "providerId": "basic-flow",
       "topLevel": true,
       "builtIn": false,
       "authenticationExecutions": [
-        { "authenticator": "idp-review-profile", "authenticatorConfig": "vinculo por senha - revisar perfil", "requirement": "REQUIRED", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
-        { "flowAlias": "vinculo por senha - criar ou vincular", "requirement": "REQUIRED", "priority": 20, "authenticatorFlow": true, "userSetupAllowed": false }
+        { "authenticator": "idp-review-profile", "authenticatorConfig": "vinculo - revisar perfil", "requirement": "REQUIRED", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
+        { "flowAlias": "vinculo - criar ou vincular", "requirement": "REQUIRED", "priority": 20, "authenticatorFlow": true, "userSetupAllowed": false }
       ]
     },
     {
-      "alias": "vinculo por senha - criar ou vincular",
+      "alias": "vinculo - criar ou vincular",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
       "authenticationExecutions": [
-        { "authenticator": "idp-create-user-if-unique", "authenticatorConfig": "vinculo por senha - criar pessoa", "requirement": "ALTERNATIVE", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
-        { "flowAlias": "vinculo por senha - conta existente", "requirement": "ALTERNATIVE", "priority": 20, "authenticatorFlow": true, "userSetupAllowed": false }
+        { "authenticator": "idp-create-user-if-unique", "authenticatorConfig": "vinculo - criar pessoa", "requirement": "ALTERNATIVE", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
+        { "flowAlias": "vinculo - conta existente", "requirement": "ALTERNATIVE", "priority": 20, "authenticatorFlow": true, "userSetupAllowed": false }
       ]
     },
     {
-      "alias": "vinculo por senha - conta existente",
+      "alias": "vinculo - conta existente",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
       "authenticationExecutions": [
         { "authenticator": "idp-confirm-link", "requirement": "REQUIRED", "priority": 10, "authenticatorFlow": false, "userSetupAllowed": false },
         { "authenticator": "idp-username-password-form", "requirement": "REQUIRED", "priority": 20, "authenticatorFlow": false, "userSetupAllowed": false },
-        { "flowAlias": "vinculo por senha - 2FA condicional", "requirement": "CONDITIONAL", "priority": 30, "authenticatorFlow": true, "userSetupAllowed": false }
+        { "flowAlias": "vinculo - 2FA condicional", "requirement": "CONDITIONAL", "priority": 30, "authenticatorFlow": true, "userSetupAllowed": false }
       ]
     },
     {
-      "alias": "vinculo por senha - 2FA condicional",
+      "alias": "vinculo - 2FA condicional",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
@@ -80,10 +80,24 @@
       "enabled": "${GITHUB_ENABLED:false}",
       "trustEmail": false,
       "storeToken": false,
-      "firstBrokerLoginFlowAlias": "first broker login por senha",
+      "firstBrokerLoginFlowAlias": "first broker login por reautenticacao",
       "config": {
         "clientId": "${GITHUB_CLIENT_ID:nao-configurado}",
         "clientSecret": "${GITHUB_CLIENT_SECRET:nao-configurado}",
+        "syncMode": "IMPORT"
+      }
+    },
+    {
+      "alias": "google",
+      "displayName": "Google",
+      "providerId": "google",
+      "enabled": "${GOOGLE_ENABLED:false}",
+      "trustEmail": false,
+      "storeToken": false,
+      "firstBrokerLoginFlowAlias": "first broker login por reautenticacao",
+      "config": {
+        "clientId": "${GOOGLE_CLIENT_ID:nao-configurado}",
+        "clientSecret": "${GOOGLE_CLIENT_SECRET:nao-configurado}",
         "syncMode": "IMPORT"
       }
     }

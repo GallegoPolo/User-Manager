@@ -155,7 +155,7 @@ Como o login se comporta:
 | Situação | O que acontece |
 |----------|----------------|
 | Primeiro login, e-mail novo | O Keycloak cria a conta e pede a confirmação do e-mail, que chega no Mailpit (http://localhost:8025) |
-| E-mail ou username que já têm conta | Nada é vinculado sozinho: o vínculo exige a **senha da conta** no próprio navegador. O `sub` continua o da conta existente |
+| E-mail ou username que já têm conta | Nada é vinculado sozinho: no próprio navegador, o vínculo exige a **senha da conta** (mais o 2FA, se houver) ou o login num provedor já ligado a ela. O `sub` continua o da conta existente |
 | GitHub sem nome ou com nome de uma palavra | O Keycloak pede nome e sobrenome antes de continuar |
 | Logins seguintes | Entra direto, com o mesmo `sub` |
 
@@ -163,7 +163,27 @@ O vínculo não usa o e-mail de confirmação porque quem pede e quem clica pode
 
 O **Trust Email** fica desligado porque o provedor do GitHub no Keycloak usa o e-mail primário sem conferir se ele foi verificado.
 
-**Risco conhecido:** se o GitHub deixar entrar com um e-mail primário não verificado, um atacante consegue criar aqui uma conta com o e-mail da vítima, ligada ao GitHub dele. Enquanto a conta não for confirmada, ele não recebe token. Mas, se a vítima clicar no link de confirmação ou usar "esqueci a senha", a conta passa a valer e continua ligada ao atacante. Antes de dar um papel a alguém, confira em **Users → Identity provider links** no console do Keycloak.
+**Risco conhecido:** se o GitHub deixar entrar com um e-mail primário não verificado, um atacante consegue criar aqui uma conta com o e-mail da vítima, ligada ao GitHub dele. Enquanto a conta não for confirmada, ele não recebe token. Mas, se a vítima clicar no link de confirmação ou usar "esqueci a senha", a conta passa a valer e continua ligada ao atacante. Antes de dar um papel a alguém, abra a pessoa em **Users** no console do Keycloak e confira a aba **Identity provider links**.
+
+### Login com Google (opcional)
+
+Mesmas regras do GitHub, inclusive o comportamento da tabela acima e o risco conhecido: sem configuração, o botão não aparece e o resto funciona normalmente. Para ligar:
+
+1. No [Google Cloud Console](https://console.cloud.google.com/), crie ou escolha um projeto e abra **Google Auth Platform → Clients**. Se ele pedir, registre o aplicativo antes: nome, e-mail de suporte e público **External**.
+2. Clique em **Create client**, escolha **Web application** e, em **Authorized redirect URIs**, adicione:
+   ```text
+   http://localhost:8080/realms/user-manager/broker/google/endpoint
+   ```
+3. Anote o **Client ID** e o **Client secret**: o secret só aparece uma vez. O Google avisa que uma mudança nessas configurações pode levar de 5 minutos a algumas horas para valer.
+4. No `.env` (crie com `cp .env.example .env`, se ainda não existir; em `GOOGLE_ENABLED`, use só `true` ou `false`):
+   ```env
+   GOOGLE_ENABLED=true
+   GOOGLE_CLIENT_ID=<client id>
+   GOOGLE_CLIENT_SECRET=<client secret>
+   ```
+5. Recrie o banco do Keycloak com os comandos da seção "Identidade".
+
+O **Trust Email** também fica desligado: mesmo com o e-mail verificado no Google, a pessoa confirma o e-mail uma vez aqui. Ligado, a conta nasceria verificada sem nenhuma ação da dona do endereço, porque o Google pode marcar como verificado um e-mail de terceiro que já trocou de dono, e o Keycloak trata como verificado quando o claim falta.
 
 ### 2. Migrations
 

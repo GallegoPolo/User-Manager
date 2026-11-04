@@ -136,9 +136,40 @@ public sealed class KeycloakRealmTests : IClassFixture<KeycloakFixture>
         // Assert
         Assert.Equal("${GITHUB_ENABLED:false}", provider.GetProperty("enabled").GetString());
         Assert.False(provider.GetProperty("trustEmail").GetBoolean());
-        Assert.Equal("first broker login por senha", provider.GetProperty("firstBrokerLoginFlowAlias").GetString());
+        Assert.Equal("first broker login por reautenticacao", provider.GetProperty("firstBrokerLoginFlowAlias").GetString());
         Assert.Equal("${GITHUB_CLIENT_ID:nao-configurado}", config.GetProperty("clientId").GetString());
         Assert.Equal("${GITHUB_CLIENT_SECRET:nao-configurado}", config.GetProperty("clientSecret").GetString());
+        Assert.Equal("IMPORT", config.GetProperty("syncMode").GetString());
+    }
+
+    [Fact]
+    public async Task GoogleProvider_WithoutSecrets_IsImportedDisabledAndHiddenFromLogin()
+    {
+        // Arrange
+        using var browser = new BrokerBrowser(_keycloak.KeycloakUrl);
+
+        // Act
+        var provider = await _keycloak.GetIdentityProviderAsync("google");
+        await browser.OpenLoginPageAsync();
+
+        // Assert
+        Assert.False(provider.GetProperty("enabled").GetBoolean());
+        Assert.DoesNotContain("social-google", browser.Html);
+    }
+
+    [Fact]
+    public void RealmFile_ConfiguresGoogleWithoutLiteralSecretsAndWithoutTrustingItsEmail()
+    {
+        // Arrange
+        var provider = ProviderInRealmFile("google");
+        var config = provider.GetProperty("config");
+
+        // Assert
+        Assert.Equal("${GOOGLE_ENABLED:false}", provider.GetProperty("enabled").GetString());
+        Assert.False(provider.GetProperty("trustEmail").GetBoolean());
+        Assert.Equal("first broker login por reautenticacao", provider.GetProperty("firstBrokerLoginFlowAlias").GetString());
+        Assert.Equal("${GOOGLE_CLIENT_ID:nao-configurado}", config.GetProperty("clientId").GetString());
+        Assert.Equal("${GOOGLE_CLIENT_SECRET:nao-configurado}", config.GetProperty("clientSecret").GetString());
         Assert.Equal("IMPORT", config.GetProperty("syncMode").GetString());
     }
 
@@ -158,10 +189,10 @@ public sealed class KeycloakRealmTests : IClassFixture<KeycloakFixture>
     }
 
     [Fact]
-    public async Task BrokerFlow_LinksOnlyWithPassword()
+    public async Task BrokerFlow_RequiresReauthenticationAndNeverEmail()
     {
         // Act
-        var authenticators = await _keycloak.GetAuthenticatorsOfFlowAsync("first broker login por senha");
+        var authenticators = await _keycloak.GetAuthenticatorsOfFlowAsync("first broker login por reautenticacao");
 
         // Assert
         Assert.Contains("idp-username-password-form", authenticators);
