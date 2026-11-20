@@ -401,3 +401,15 @@ label {
   padding: 32px;
   color: var(--text-muted);
 }
+
+.form-alert {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 14px;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
