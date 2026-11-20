@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { ApiError } from "../../../shared/api/apiClient";
 import { LoadError } from "../../../shared/components/LoadError";
+import { StatusNotice, type Notice } from "../../../shared/components/StatusNotice";
 import { useAuth } from "../../auth/context/useAuth";
 import { deleteUser, renameUser } from "../api/UserService";
 import { UserFormModal } from "../components/UserFormModal";
@@ -14,6 +16,7 @@ export function UsersPage() {
   const canManage = hasRole("operator");
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const { data: users, isLoading, error } = useUsers();
 
@@ -27,6 +30,16 @@ export function UsersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
+    onSuccess: () => setNotice({ kind: "ok", text: "Usuário excluído.", takeFocus: true }),
+    onError: (deleteError) =>
+      setNotice({
+        kind: "warn",
+        text:
+          deleteError instanceof ApiError && deleteError.status === 404
+            ? "Esse usuário não existe mais. A lista foi atualizada."
+            : "Não foi possível excluir. Tente de novo.",
+        takeFocus: true,
+      }),
     onSettled: () => {
       setDeletingUser(null);
       queryClient.invalidateQueries({ queryKey: usersKey });
@@ -38,6 +51,8 @@ export function UsersPage() {
       <div className="page-header">
         <h1>Usuários</h1>
       </div>
+
+      <StatusNotice notice={notice} />
 
       {isLoading && <p className="loading">Carregando...</p>}
       {error && <LoadError error={error} what="os usuários" />}
@@ -69,7 +84,10 @@ export function UsersPage() {
                         type="button"
                         className="button-danger"
                         aria-label={`Excluir ${user.name}`}
-                        onClick={() => setDeletingUser(user)}
+                        onClick={() => {
+                          setNotice(null);
+                          setDeletingUser(user);
+                        }}
                       >
                         Excluir
                       </button>

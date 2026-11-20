@@ -149,9 +149,11 @@ describe("ContactsPage", () => {
     expect(dialog.textContent).toContain("Bruno Lima");
     await confirmDeletion();
 
-    expect((await screen.findByRole("status")).textContent).toBe("Contato excluído.");
+    const notice = await screen.findByRole("status");
+    expect(notice.textContent).toBe("Contato excluído.");
     expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() => expect(screen.queryByText("Bruno Lima")).toBeNull());
+    expect(document.activeElement).toBe(notice);
   });
 
   it("ContactsPage_DeleteCancelled_KeepsContact", async () => {

@@ -14,12 +14,16 @@ function json(status: number, body?: unknown) {
   });
 }
 
+let deleteStatus: number;
+
 beforeEach(() => {
+  deleteStatus = 204;
   users = [{ id: "u1", name: "Otto Lima", email: "otto@user-manager.local", createdAt: "2026-11-20T10:00:00Z" }];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === "DELETE") {
+        if (deleteStatus !== 204) return json(deleteStatus, []);
         users = users.filter((user) => !url.endsWith(user.id));
         return json(204);
       }
@@ -44,6 +48,32 @@ describe("UsersPage", () => {
 
     await waitFor(() => expect(screen.queryByText("Otto Lima")).toBeNull());
     expect(screen.queryByRole("dialog")).toBeNull();
+    const notice = screen.getByRole("status");
+    expect(notice.textContent).toBe("Usuário excluído.");
+    expect(document.activeElement).toBe(notice);
+  });
+
+  it("UsersPage_DeleteFails_ShowsWarningAndKeepsUser", async () => {
+    deleteStatus = 500;
+    renderWithProviders(<UsersPage />, { session: aSession({ roles: ["operator"] }), route: "/users" });
+    const table = await screen.findByRole("table");
+
+    await userEvent.click(within(table).getByRole("button", { name: "Excluir Otto Lima" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Excluir" }));
+
+    expect((await screen.findByRole("status")).textContent).toBe("Não foi possível excluir. Tente de novo.");
+    expect(screen.getByText("Otto Lima")).toBeDefined();
+  });
+
+  it("UsersPage_DeleteOfMissingUser_SaysListWasRefreshed", async () => {
+    deleteStatus = 404;
+    renderWithProviders(<UsersPage />, { session: aSession({ roles: ["operator"] }), route: "/users" });
+    const table = await screen.findByRole("table");
+
+    await userEvent.click(within(table).getByRole("button", { name: "Excluir Otto Lima" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Excluir" }));
+
+    expect((await screen.findByRole("status")).textContent).toBe("Esse usuário não existe mais. A lista foi atualizada.");
   });
 });
 

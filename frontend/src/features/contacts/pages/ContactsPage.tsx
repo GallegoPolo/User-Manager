@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ApiError } from "../../../shared/api/apiClient";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { LoadError } from "../../../shared/components/LoadError";
+import { StatusNotice, type Notice } from "../../../shared/components/StatusNotice";
 import { ContactFormModal } from "../components/ContactFormModal";
 import {
   useContacts,
@@ -13,8 +14,6 @@ import {
 import type { Contact } from "../types/contact";
 
 type Editing = { contact?: Contact } | null;
-type Notice = { kind: "ok" | "warn"; text: string } | null;
-
 const missingContactNotice: Notice = { kind: "warn", text: "Esse contato não existe mais. A lista foi atualizada." };
 
 function isNotFound(error: unknown) {
@@ -31,7 +30,7 @@ export function ContactsPage() {
   const saveContact = useSaveContact();
   const removeContact = useDeleteContact();
   const [editing, setEditing] = useState<Editing>(null);
-  const [notice, setNotice] = useState<Notice>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [deleting, setDeleting] = useState<Contact | null>(null);
 
   function openForm(contact?: Contact) {
@@ -63,9 +62,12 @@ export function ContactsPage() {
 
   function handleDelete(contact: Contact) {
     removeContact.mutate(contact.id, {
-      onSuccess: () => setNotice({ kind: "ok", text: "Contato excluído." }),
+      onSuccess: () => setNotice({ kind: "ok", text: "Contato excluído.", takeFocus: true }),
       onError: (error) =>
-        setNotice(isNotFound(error) ? missingContactNotice : { kind: "warn", text: "Não foi possível excluir. Tente de novo." }),
+        setNotice({
+          ...(isNotFound(error) ? missingContactNotice : { kind: "warn", text: "Não foi possível excluir. Tente de novo." }),
+          takeFocus: true,
+        }),
       onSettled: () => {
         setDeleting(null);
         refreshContacts();
@@ -85,11 +87,7 @@ export function ContactsPage() {
         </button>
       </div>
 
-      {notice && (
-        <p role="status" className={`notice notice--${notice.kind}`}>
-          {notice.text}
-        </p>
-      )}
+      <StatusNotice notice={notice} />
 
       {isLoading && <p className="loading">Carregando...</p>}
       {loadError && <LoadError error={loadError} what="a agenda" />}
