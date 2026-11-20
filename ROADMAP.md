@@ -32,12 +32,14 @@ Não é um CRUD bonito. É um sistema distribuído que demonstra conhecimento re
 | **B** | Identidade (Keycloak, JIT provisioning, `ICurrentUser`, BFF, cookies HttpOnly, Redis) |
 | **C** | Domínio: agenda pessoal (`User` → owns → `Contact`); roles só quando houver necessidade |
 | **D** | Observabilidade e testes (logs estruturados, correlation ID, OpenTelemetry, testes de falha) |
-| **E** | Frontend ("Operations Ledger", perfil, avatar; token perdido no F5 se resolve com B) |
+| **E** | Frontend e produto visível (agenda, erros amigáveis, nome na auditoria, avatar em blob storage) |
+| **F** | Containers (Dockerfile multi-stage de cada serviço, `docker compose up` sobe tudo) |
+| **G** | Fechamento (README do zero ao login, seção "Rodar" do `CLAUDE.md`, perguntas do ROADMAP revisadas) |
 
 ## Ordem escolhida (intercalada)
 
 ```text
-A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D ✅ → C ✅ → A5 ✅ → A6 ✅ → B → E
+A1 ✅ → A2 ✅ → A3 ✅ → A4 ✅ → D ✅ → C ✅ → A5 ✅ → A6 ✅ → B ✅ → E0 → E1 → E2 → E3 → F → G
 ```
 
 Por quê:
@@ -45,6 +47,8 @@ Por quê:
 - **D antes do domínio**: depurar mensageria sem correlation ID é sofrido. D1 (correlation ID) e D2 (OpenTelemetry) foram feitos juntos, por escolha, porque o OpenTelemetry já usa o mesmo mecanismo (W3C `traceparent`).
 - **C antes de B**: o domínio de contatos pode ser construído com a autenticação atual; trocar a identidade depois é uma mudança de borda (isolada por `ICurrentUser`).
 - **A5 e A6 depois de C**: o domínio novo vai gerar eventos novos (`ContactCreated`...), que justificam backoff e a separação entre integration events e auditoria.
+- **Depois de B, reorganizado para fechar o projeto (2026-11-20)**: entra o que quem abre o repositório vê ou testa (agenda, erros amigáveis, avatar, `docker compose up`, README). Fica como débito o que é raro ou interno (corrida de contatos, estilização caprichada, paginação, decisão do MassTransit 9).
+- **Avatar (E3) antes dos containers (F)**: o blob storage entra no compose antes de tudo ir para containers, então o F empacota o sistema completo.
 
 ## Passos
 
@@ -98,7 +102,18 @@ Por quê:
 
 ### Frente E — Frontend
 
-- [ ] **E — Perfil, avatar, estilização** (com dados reais)
+- [ ] **E0 — Identidade visual "Espresso"**: paleta marrom escura e fontes próprias (DM Serif Display + Inter, hospedadas no projeto) no app inteiro; capa pública animada em `/` (respeita `prefers-reduced-motion`); tema de login do Keycloak `user-manager` (CSS herdando do `keycloak.v2`) combinando com o app; Vitest + Testing Library no frontend
+- [ ] **E1 — Agenda na tela**: listar, criar, editar e excluir contatos pelo BFF (`/api/me/contacts`), com os erros de validação e conflito da API
+- [ ] **E2 — Erros visíveis e nome na auditoria**: aba antiga (`Correlation failed`) volta para a página inicial (`OnRemoteFailure`); 403 diferente de "Falha ao carregar"; "Sair" com `sid` velho; deep link no login; "Quem fez" com nome em vez do `Guid`
+- [ ] **E3 — Avatar em blob storage**: a imagem fica num armazenamento de objetos (no compose) e o banco guarda só a referência; upload validado (tipo e tamanho) e leitura pelo BFF ou por link temporário
+
+### Frente F — Containers
+
+- [ ] **F — Docker**: Dockerfile multi-stage e usuário não root para UserManager.Api, AuditService.Api, AuditService.Worker, BFF e frontend; `docker compose up` sobe tudo (issuer do Keycloak com `KC_HOSTNAME`, endpoint OTLP por variável)
+
+### Frente G — Fechamento
+
+- [ ] **G — Portfólio**: README do clone ao login, seção "Rodar" do `CLAUDE.md`, tabela de perguntas revisada (os 🟡 explicados) e débitos conferidos
 
 ## Débitos técnicos conhecidos
 
@@ -122,7 +137,7 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | MongoDB sem spans (driver 3.6 sem suporte nativo a OpenTelemetry) | AuditService | quando o driver suportar |
 | **Pre-hijacking pelos provedores sociais** (risco aceito): com um e-mail não verificado no provedor, um atacante cria a conta com o e-mail da vítima, ligada à identidade externa dele; se a vítima clicar na confirmação ou usar "esqueci a senha", a conta vale e continua ligada ao atacante (reproduzido contra provedores falsos). Login real (2026-11-20): a variante por senha não passa, porque uma conta registrada com o e-mail da vítima e não confirmada fez o Google pedir a senha dessa conta e a vítima não entrou. Não verificado: se GitHub e Google reais aceitam um e-mail não verificado num login OAuth (a variante pelo provedor). Corrigir exige um SPI (extensão Java do Keycloak) | realm / Keycloak | tentar no login real; antes de produção, decidir entre SPI ou tirar o provedor. Até lá, conferir os vínculos antes de dar papel |
 | Provedor novo sem `firstBrokerLoginFlowAlias` provavelmente cai no fluxo padrão, com vínculo por e-mail (suposição, não medida) | realm | ao adicionar um provedor: repetir o alias e o teste da realm |
-| Aba antiga do login dá erro depois que a pessoa confirma o e-mail pelo link, que abre outra aba (observado no login real, 2026-11-20; texto do erro não registrado). O login vale uma vez só e a aba nova já o concluiu, então a aba antiga não deve entrar de novo, mas deve cair numa tela amigável ou na página inicial. Hipótese não medida: o Keycloak manda a aba antiga ao `/signin-oidc` com um `state` já usado e o BFF, sem `OnRemoteFailure`, mostra erro cru. O mesmo vale para voltar depois do timeout remoto do OIDC | BFF | E (diagnosticar com o texto do erro; tratar `OnRemoteFailure` redirecionando para `/`) |
+| Aba antiga do login dá erro depois que a pessoa confirma o e-mail pelo link, que abre outra aba (observado no login real, 2026-11-20): `AuthenticationFailureException: Correlation failed`, sem tratamento, na página de exceção do desenvolvedor. O login vale uma vez só e a aba nova já o concluiu, apagando o cookie de correlação; a aba antiga chega ao `/signin-oidc` sem ele e não deve entrar de novo, mas deve cair numa tela amigável ou na página inicial. O mesmo vale para voltar depois do timeout remoto do OIDC | BFF | E (tratar `OnRemoteFailure` redirecionando para `/`) |
 | Token de admin das fixtures do Keycloak é pedido uma vez e vence em cerca de 60 s: depurar com breakpoint derruba o teste com 401 enganoso | `KeycloakFixture`, `KeycloakBrokerFixture` | quando incomodar |
 | Pessoas de teste da realm sem `id` fixo: recriar o volume `keycloakdata` muda o `sub` delas, e a ficha e a agenda antigas ficam sem dono no UserManager | `docker/keycloak` | quando incomodar no ambiente local (fixar `id` na realm) |
 | `EEventType.AuditLogQueried` sem produtor (nada grava esse valor) | `AuditService.Domain` | se a leitura da auditoria passar a ser auditada; senão, remover |
@@ -143,7 +158,7 @@ Coisas encontradas no caminho, fora do escopo do passo em que apareceram.
 | Traces de ruído do Swagger e de `OPTIONS` (CORS) | `UserManager.Api` | quando conveniente (filtro na instrumentação) |
 | Endpoint OTLP implícito (`localhost:4317`); em containers precisará de `OTEL_EXPORTER_OTLP_ENDPOINT` | hosts | quando os serviços forem para containers |
 | Conversor EF revalida o VO na leitura: se a regra de `Email`/`PhoneNumber` endurecer, linhas antigas lançam ao carregar (exige migração de dados junto) | `UserManagerDbContext` | ao mudar regra de VO |
-| Corrida que escapa da checagem do caso de uso cai no middleware: duplicado → 409 com corpo `ErrorResponse` (`Database`, inglês) em vez do array `Email` (desde B2 o `23505` já chega como `UniqueConstraintViolationException`, travado por teste da Api; falta o caso de uso de contato convertê-la em `Result.Conflict`); dono excluído no meio do POST → FK `23503` → 400 em vez de 404; PUT×DELETE ou DELETE×DELETE simultâneos do mesmo contato → `UPDATE`/`DELETE` afeta 0 linhas → `DbUpdateConcurrencyException` → **500** (PUT×PUT não falha: vence a última escrita e os dois `contact.updated` são auditados). Corrigir traduzindo a violação de constraint na Infrastructure para algo neutro que o caso de uso converta em `Result.Conflict`/`NotFound` | `GlobalExceptionHandlerMiddleware` / casos de uso de contato | antes do frontend (E) — decidido adiar no C4 |
+| Corrida que escapa da checagem do caso de uso cai no middleware: duplicado → 409 com corpo `ErrorResponse` (`Database`, inglês) em vez do array `Email` (desde B2 o `23505` já chega como `UniqueConstraintViolationException`, travado por teste da Api; falta o caso de uso de contato convertê-la em `Result.Conflict`); dono excluído no meio do POST → FK `23503` → 400 em vez de 404; PUT×DELETE ou DELETE×DELETE simultâneos do mesmo contato → `UPDATE`/`DELETE` afeta 0 linhas → `DbUpdateConcurrencyException` → **500** (PUT×PUT não falha: vence a última escrita e os dois `contact.updated` são auditados). Corrigir traduzindo a violação de constraint na Infrastructure para algo neutro que o caso de uso converta em `Result.Conflict`/`NotFound` | `GlobalExceptionHandlerMiddleware` / casos de uso de contato | adiado de novo em 2026-11-20 (raro numa agenda de uma pessoa só); renomear × excluir usuário pelo operator provavelmente tem o mesmo 500 (não medido). Para impedir o lost update do PUT×PUT: `xmin` + `ETag`/`If-Match` |
 | Auditoria grava e-mail/telefone de terceiros sem prazo (LGPD: mascarar ou reter por tempo limitado) | `ContactAuditPayload` (os 3 eventos de contato), `UserCreatedAuditPayload` | quando o tema surgir |
 | Lista de contatos sem paginação | `GET /api/me/contacts` | quando houver volume |
 | Trace não amostrado: comportamento da propagação do MassTransit não verificado (com o `RabbitMQ.Client` o AuditService abria um trace órfão) | Outbox / RabbitMQ | quando houver sampling (sampler consistente nos dois serviços) |
