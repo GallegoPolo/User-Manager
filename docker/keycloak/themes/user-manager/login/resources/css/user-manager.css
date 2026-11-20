@@ -1,0 +1,174 @@
+@font-face {
+  font-family: "DM Serif Display";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/dm-serif-display-latin-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/inter-latin-variable.woff2") format("woff2");
+}
+
+:root {
+  --um-bg: #1c1410;
+  --um-surface: #251b15;
+  --um-surface-raised: #2e221b;
+  --um-border: #3a2a20;
+  --um-text: #f3e9dc;
+  --um-text-muted: #c9b8a6;
+  --um-accent: #d4a373;
+  --um-accent-hover: #e0b487;
+  --um-accent-ink: #1c1410;
+  --um-danger: #f2a49a;
+
+  color-scheme: dark;
+
+  --keycloak-card-top-color: var(--um-accent);
+
+  --pf-v5-global--FontFamily--text: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --pf-v5-global--FontFamily--heading: "DM Serif Display", Georgia, serif;
+  --pf-v5-global--BackgroundColor--100: var(--um-surface);
+  --pf-v5-global--BackgroundColor--200: var(--um-bg);
+  --pf-v5-global--Color--100: var(--um-text);
+  --pf-v5-global--Color--200: var(--um-text-muted);
+  --pf-v5-global--BorderColor--100: var(--um-border);
+  --pf-v5-global--BorderColor--200: #5a4334;
+  --pf-v5-global--BorderColor--300: var(--um-border);
+  --pf-v5-global--primary-color--100: var(--um-accent);
+  --pf-v5-global--primary-color--200: var(--um-accent-hover);
+  --pf-v5-global--link--Color: var(--um-accent);
+  --pf-v5-global--link--Color--hover: var(--um-accent-hover);
+  --pf-v5-global--danger-color--100: var(--um-danger);
+  --pf-v5-global--danger-color--200: var(--um-danger);
+}
+
+.login-pf body {
+  background: var(--um-bg);
+  color: var(--um-text);
+  font-family: var(--pf-v5-global--FontFamily--text);
+}
+
+#kc-header-wrapper {
+  font-family: var(--pf-v5-global--FontFamily--heading);
+  font-size: 40px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--um-text) !important;
+}
+
+.pf-v5-c-login__main {
+  border: 1px solid var(--um-border);
+  border-radius: 20px;
+  background-color: var(--um-surface);
+  overflow: hidden;
+}
+
+.pf-v5-c-login__main-header {
+  border-top-width: 3px;
+}
+
+.pf-v5-c-title,
+#kc-page-title {
+  font-family: var(--pf-v5-global--FontFamily--heading);
+  font-weight: 400;
+  color: var(--um-text);
+}
+
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text {
+  color: var(--um-text);
+}
+
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--BackgroundColor: var(--um-bg);
+  --pf-v5-c-form-control--Color: var(--um-text);
+  --pf-v5-c-form-control--before--BorderColor: var(--um-border);
+  --pf-v5-c-form-control--after--BorderColor: var(--um-border);
+  --pf-v5-c-form-control--hover--after--BorderColor: var(--um-accent);
+  --pf-v5-c-form-control--focus--after--BorderColor: var(--um-accent);
+  --pf-v5-c-form-control--after--BorderBottomColor: var(--um-border);
+  --pf-v5-c-form-control--hover--after--BorderBottomColor: var(--um-accent);
+  --pf-v5-c-form-control--focus--after--BorderBottomColor: var(--um-accent);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.pf-v5-c-form-control > input,
+.pf-v5-c-form-control > select,
+.pf-v5-c-form-control > textarea {
+  color: var(--um-text);
+}
+
+.pf-v5-c-button {
+  border-radius: 999px;
+}
+
+.pf-v5-c-button.pf-m-primary {
+  --pf-v5-c-button--m-primary--BackgroundColor: var(--um-accent);
+  --pf-v5-c-button--m-primary--hover--BackgroundColor: var(--um-accent-hover);
+  --pf-v5-c-button--m-primary--focus--BackgroundColor: var(--um-accent-hover);
+  --pf-v5-c-button--m-primary--active--BackgroundColor: var(--um-accent-hover);
+  --pf-v5-c-button--m-primary--Color: var(--um-accent-ink);
+  --pf-v5-c-button--m-primary--hover--Color: var(--um-accent-ink);
+  --pf-v5-c-button--m-primary--focus--Color: var(--um-accent-ink);
+  --pf-v5-c-button--m-primary--active--Color: var(--um-accent-ink);
+  font-weight: 600;
+}
+
+.pf-v5-c-button.pf-m-tertiary,
+#kc-social-providers .pf-v5-c-button.pf-m-tertiary {
+  --pf-v5-c-button--m-tertiary--BackgroundColor: transparent;
+  --pf-v5-c-button--m-tertiary--Color: var(--um-text);
+  --pf-v5-c-button--m-tertiary--hover--Color: var(--um-text);
+  --pf-v5-c-button--m-tertiary--after--BorderColor: var(--um-border);
+  --pf-v5-c-button--m-tertiary--hover--after--BorderColor: var(--um-accent);
+}
+
+.pf-v5-c-button.pf-m-control {
+  --pf-v5-c-button--m-control--BackgroundColor: var(--um-bg);
+  --pf-v5-c-button--m-control--Color: var(--um-text-muted);
+  --pf-v5-c-button--m-control--after--BorderColor: var(--um-border);
+}
+
+.pf-v5-c-button.pf-m-link,
+.pf-v5-c-login__main-footer-band a,
+#kc-form-options a,
+a {
+  color: var(--um-accent);
+}
+
+.pf-v5-c-login__main-footer-band {
+  border-color: var(--um-border);
+  background-color: transparent;
+  color: var(--um-text-muted);
+}
+
+.kc-login-divider {
+  color: var(--um-text-muted);
+}
+
+.pf-v5-c-alert {
+  --pf-v5-c-alert--BackgroundColor: var(--um-surface-raised);
+  --pf-v5-c-alert__title--Color: var(--um-text);
+  border-radius: 12px;
+}
+
+.pf-v5-c-helper-text__item.pf-m-error,
+.kc-feedback-text {
+  color: var(--um-danger);
+}
+
+:focus-visible {
+  outline: 2px solid var(--um-accent);
+  outline-offset: 2px;
+}
+
+#social-github img,
+#social-github svg {
+  filter: invert(1);
+}

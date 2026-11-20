@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <None Include="..\..\..\docker\keycloak\user-manager-realm.json" Link="Identity\user-manager-realm.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\docker\keycloak\themes\user-manager\**\*" LinkBase="Identity\themes\user-manager" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

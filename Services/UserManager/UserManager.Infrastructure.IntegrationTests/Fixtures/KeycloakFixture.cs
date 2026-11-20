@@ -14,9 +14,13 @@ public sealed class KeycloakFixture : IAsyncLifetime
     public const string Image = "quay.io/keycloak/keycloak:26.8.1";
     public const string BffClientSecret = "user-manager-bff-dev-secret";
     public const string BffRedirectUri = "http://localhost:5173/signin-oidc";
+    public const string ThemeMountPath = "/opt/keycloak/themes/user-manager";
+
+    public static string ThemeDirectory => Path.Combine(AppContext.BaseDirectory, "Identity", "themes", "user-manager");
 
     private readonly KeycloakContainer _container = new KeycloakBuilder(Image)
         .WithRealm(Path.Combine(AppContext.BaseDirectory, "Identity", "user-manager-realm.json"))
+        .WithResourceMapping(new DirectoryInfo(ThemeDirectory), ThemeMountPath)
         .Build();
 
     private HttpClient _http = null!;

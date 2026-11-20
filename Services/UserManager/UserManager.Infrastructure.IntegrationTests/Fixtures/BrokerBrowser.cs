@@ -67,6 +67,22 @@ public sealed partial class BrokerBrowser : IDisposable
         await NavigateAsync(Absolute(WebUtility.HtmlDecode(match.Groups[1].Value)));
     }
 
+    public async Task ClickRegisterAsync()
+    {
+        var match = RegisterLink().Match(Html);
+        if (!match.Success)
+            throw new InvalidOperationException("A página atual não tem o link de cadastro.");
+
+        await NavigateAsync(Absolute(WebUtility.HtmlDecode(match.Groups[1].Value)));
+    }
+
+    public async Task<(HttpStatusCode Status, string Body)> DownloadAsync(string url)
+    {
+        using var response = await SendAsync(HttpMethod.Get, Absolute(url));
+
+        return (response.StatusCode, await response.Content.ReadAsStringAsync());
+    }
+
     public async Task OpenLoginPageAsync()
     {
         var challenge = Base64Url.EncodeToString(SHA256.HashData(Encoding.ASCII.GetBytes(CodeVerifier)));
@@ -160,6 +176,9 @@ public sealed partial class BrokerBrowser : IDisposable
 
     [GeneratedRegex(@"href=""([^""]*reset-credentials[^""]*)""")]
     private static partial Regex ForgotPasswordLink();
+
+    [GeneratedRegex(@"href=""([^""]*/login-actions/registration[^""]*)""")]
+    private static partial Regex RegisterLink();
 
     [GeneratedRegex(@"<form[^>]*?action=""([^""]+)""", RegexOptions.Singleline)]
     private static partial Regex FormAction();

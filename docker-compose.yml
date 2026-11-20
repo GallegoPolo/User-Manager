@@ -107,6 +107,7 @@ services:
       - "8080:8080"
     volumes:
       - ./docker/keycloak/user-manager-realm.json:/opt/keycloak/data/import/user-manager-realm.json:ro
+      - ./docker/keycloak/themes/user-manager:/opt/keycloak/themes/user-manager:ro
     depends_on:
       keycloak-db:
         condition: service_healthy

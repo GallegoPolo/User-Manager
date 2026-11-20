@@ -53,6 +53,7 @@ public sealed partial class KeycloakBrokerFixture : IAsyncLifetime
         _keycloak = new KeycloakBuilder(KeycloakFixture.Image)
             .WithNetwork(_network)
             .WithRealm(WriteRealmPointingToFakeGitHub())
+            .WithResourceMapping(new DirectoryInfo(KeycloakFixture.ThemeDirectory), KeycloakFixture.ThemeMountPath)
             .WithEnvironment("GITHUB_ENABLED", "true")
             .WithEnvironment("GITHUB_CLIENT_ID", FakeClientId)
             .WithEnvironment("GITHUB_CLIENT_SECRET", FakeClientSecret)

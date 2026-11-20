@@ -1,9 +1,11 @@
+using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using UserManager.Infrastructure.IntegrationTests.Fixtures;
 
 namespace UserManager.Infrastructure.IntegrationTests.Identity;
 
-public sealed class KeycloakRealmTests : IClassFixture<KeycloakFixture>
+public sealed partial class KeycloakRealmTests : IClassFixture<KeycloakFixture>
 {
     private readonly KeycloakFixture _keycloak;
 
@@ -201,13 +203,58 @@ public sealed class KeycloakRealmTests : IClassFixture<KeycloakFixture>
         Assert.DoesNotContain("idp-auto-link", authenticators);
     }
 
-    private static JsonElement ProviderInRealmFile(string alias)
+    [Fact]
+    public void RealmFile_UsesUserManagerLoginTheme()
     {
-        var realmFile = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Identity", "user-manager-realm.json")));
+        // Act
+        var loginTheme = RealmFile().GetProperty("loginTheme").GetString();
 
-        return realmFile.RootElement.GetProperty("identityProviders").EnumerateArray()
-            .Single(provider => provider.GetProperty("alias").GetString() == alias);
+        // Assert
+        Assert.Equal("user-manager", loginTheme);
     }
+
+    [Fact]
+    public async Task LoginPage_LoadsUserManagerStylesheetAndItIsServed()
+    {
+        // Arrange
+        using var browser = new BrokerBrowser(_keycloak.KeycloakUrl);
+        await browser.OpenLoginPageAsync();
+
+        // Act
+        var stylesheet = UserManagerStylesheetHref().Match(browser.Html);
+        var (status, css) = await browser.DownloadAsync(WebUtility.HtmlDecode(stylesheet.Groups[1].Value));
+
+        // Assert
+        Assert.True(stylesheet.Success, "a tela de login não carrega o user-manager.css");
+        Assert.Contains("styles.css", browser.Html);
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("#1c1410", css, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RegistrationPage_UsesUserManagerTheme()
+    {
+        // Arrange
+        using var browser = new BrokerBrowser(_keycloak.KeycloakUrl);
+        await browser.OpenLoginPageAsync();
+
+        // Act
+        await browser.ClickRegisterAsync();
+
+        // Assert
+        Assert.Contains("kc-register-form", browser.Html);
+        Assert.Matches(UserManagerStylesheetHref(), browser.Html);
+    }
+
+    private static JsonElement RealmFile() =>
+        JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Identity", "user-manager-realm.json"))).RootElement;
+
+    private static JsonElement ProviderInRealmFile(string alias) =>
+        RealmFile().GetProperty("identityProviders").EnumerateArray()
+            .Single(provider => provider.GetProperty("alias").GetString() == alias);
+
+    [GeneratedRegex(@"href=""([^""]*/login/user-manager/css/user-manager\.css[^""]*)""")]
+    private static partial Regex UserManagerStylesheetHref();
 
     private static IReadOnlyList<string> RolesOf(JsonElement token) => StringsOf(token, "roles");
 

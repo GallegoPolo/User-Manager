@@ -1,6 +1,7 @@
 {
   "realm": "user-manager",
   "displayName": "User-Manager",
+  "loginTheme": "user-manager",
   "enabled": true,
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
