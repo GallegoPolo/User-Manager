@@ -10,6 +10,7 @@ describe("Sidebar", () => {
     renderWithProviders(<Sidebar />, { session: aSession() });
 
     expect(screen.getByRole("link", { name: "Minha conta" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "Agenda" }).getAttribute("href")).toBe("/contacts");
     expect(screen.queryByRole("link", { name: "Usuários" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Auditoria" })).toBeNull();
   });

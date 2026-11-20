@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
+import { ContactsPage } from "../features/contacts/pages/ContactsPage";
 import { LandingPage } from "../features/landing/pages/LandingPage";
 import { MePage } from "../features/users/pages/MePage";
 import { UsersPage } from "../features/users/pages/UsersPage";
@@ -13,6 +14,7 @@ export default function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
+          <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/me" element={<MePage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/audit" element={<AuditPage />} />

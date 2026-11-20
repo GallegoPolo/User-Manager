@@ -4,7 +4,7 @@ import { AuditExampleFeed } from "../components/AuditExampleFeed";
 import { ContactOrbit } from "../components/ContactOrbit";
 import "../landing.css";
 
-const agendaPath = "/me";
+const agendaPath = "/contacts";
 
 function MainAction() {
   const { isAuthenticated, isLoading, login } = useAuth();

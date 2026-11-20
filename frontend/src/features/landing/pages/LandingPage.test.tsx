@@ -9,20 +9,20 @@ import { LandingPage } from "./LandingPage";
 afterEach(cleanup);
 
 describe("LandingPage", () => {
-  it("LandingPage_WithoutSession_ShowsEnterThatLogsInToMe", async () => {
+  it("LandingPage_WithoutSession_ShowsEnterThatLogsInToAgenda", async () => {
     const login = vi.fn();
     renderWithProviders(<LandingPage />, { session: null, login });
 
     await userEvent.click(screen.getByRole("button", { name: "Entrar na minha agenda" }));
 
-    expect(login).toHaveBeenCalledWith("/me");
+    expect(login).toHaveBeenCalledWith("/contacts");
     expect(screen.queryByRole("link", { name: "Abrir minha agenda" })).toBeNull();
   });
 
-  it("LandingPage_WithSession_ShowsOpenAgendaLinkToMe", () => {
+  it("LandingPage_WithSession_ShowsOpenAgendaLinkToAgenda", () => {
     renderWithProviders(<LandingPage />, { session: aSession() });
 
-    expect(screen.getByRole("link", { name: "Abrir minha agenda" }).getAttribute("href")).toBe("/me");
+    expect(screen.getByRole("link", { name: "Abrir minha agenda" }).getAttribute("href")).toBe("/contacts");
     expect(screen.queryByRole("button", { name: /Entrar/ })).toBeNull();
   });
 

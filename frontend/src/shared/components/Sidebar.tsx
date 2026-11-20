@@ -22,6 +22,10 @@ export function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
+        <NavLink to="/contacts" className={linkClass}>
+          Agenda
+        </NavLink>
+
         <NavLink to="/me" className={linkClass}>
           Minha conta
         </NavLink>
