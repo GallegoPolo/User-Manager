@@ -1,4 +1,5 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+import type { ReturnState } from "../../auth/components/ProtectedRoute";
 import { useAuth } from "../../auth/context/useAuth";
 import { AuditExampleFeed } from "../components/AuditExampleFeed";
 import { ContactOrbit } from "../components/ContactOrbit";
@@ -8,6 +9,8 @@ const agendaPath = "/contacts";
 
 function MainAction() {
   const { isAuthenticated, isLoading, login } = useAuth();
+  const returnState = useLocation().state as ReturnState | null;
+  const afterLogin = returnState?.from ?? agendaPath;
 
   if (isLoading) {
     return <span className="landing-action-placeholder" />;
@@ -22,7 +25,7 @@ function MainAction() {
   }
 
   return (
-    <button type="button" className="button-primary landing-cta" onClick={() => login(agendaPath)}>
+    <button type="button" className="button-primary landing-cta" onClick={() => login(afterLogin)}>
       Entrar na minha agenda
     </button>
   );

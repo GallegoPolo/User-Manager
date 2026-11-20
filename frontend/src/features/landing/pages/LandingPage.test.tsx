@@ -73,6 +73,23 @@ describe("ProtectedRoute", () => {
     expect(screen.getByRole("button", { name: "Entrar na minha agenda" })).toBeDefined();
   });
 
+  it("ProtectedRoute_DeepLink_EnterReturnsToRequestedPage", async () => {
+    const login = vi.fn();
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/audit" element={<p>auditoria</p>} />
+        </Route>
+      </Routes>,
+      { session: null, route: "/audit?page=2", login },
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Entrar na minha agenda" }));
+
+    expect(login).toHaveBeenCalledWith("/audit?page=2");
+  });
+
   it("OldLoginRoute_WithSession_GoesToLanding", async () => {
     const { default: App } = await import("../../../app/App");
     renderWithProviders(<App />, { session: aSession(), route: "/login" });
