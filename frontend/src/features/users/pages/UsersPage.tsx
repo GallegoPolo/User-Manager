@@ -1,10 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { LoadError } from "../../../shared/components/LoadError";
 import { useAuth } from "../../auth/context/useAuth";
-import { deleteUser, getUsers, renameUser } from "../api/UserService";
+import { deleteUser, renameUser } from "../api/UserService";
 import { UserFormModal } from "../components/UserFormModal";
+import { usersKey, useUsers } from "../hooks/useUsers";
 import type { RenameUserData, User } from "../types/user";
 
 export function UsersPage() {
@@ -14,19 +15,12 @@ export function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
-  const {
-    data: users,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["users"],
-    queryFn: getUsers,
-  });
+  const { data: users, isLoading, error } = useUsers();
 
   const renameMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: RenameUserData }) => renameUser(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: usersKey });
       setEditingUser(null);
     },
   });
@@ -35,7 +29,7 @@ export function UsersPage() {
     mutationFn: deleteUser,
     onSettled: () => {
       setDeletingUser(null);
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: usersKey });
     },
   });
 

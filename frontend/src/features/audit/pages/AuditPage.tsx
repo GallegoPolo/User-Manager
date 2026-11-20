@@ -1,8 +1,13 @@
+import { useMemo } from "react";
 import { LoadError } from "../../../shared/components/LoadError";
+import { useUsers } from "../../users/hooks/useUsers";
+import { Performer } from "../components/Performer";
 import { useAuditLogs } from "../hooks/useAuditLogs";
 
 export function AuditPage() {
   const { data, isLoading, error, refetch, isFetching } = useAuditLogs();
+  const { data: users } = useUsers();
+  const namesById = useMemo(() => new Map(users?.map((user) => [user.id, user.name])), [users]);
 
   return (
     <main className="page">
@@ -35,7 +40,9 @@ export function AuditPage() {
                   <td>{log.eventType}</td>
                   <td>{new Date(log.timestamp).toLocaleString("pt-BR")}</td>
                   <td className="mono">{log.aggregateId}</td>
-                  <td className="mono">{log.performedBy}</td>
+                  <td>
+                    <Performer performedBy={log.performedBy} namesById={namesById} />
+                  </td>
                 </tr>
               ))}
             </tbody>
