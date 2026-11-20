@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { useAuth } from "../../auth/context/useAuth";
 import { deleteUser, getUsers, renameUser } from "../api/UserService";
 import { UserFormModal } from "../components/UserFormModal";
@@ -10,6 +11,7 @@ export function UsersPage() {
   const { hasRole } = useAuth();
   const canManage = hasRole("operator");
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
   const {
     data: users,
@@ -30,14 +32,11 @@ export function UsersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+    onSettled: () => {
+      setDeletingUser(null);
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
   });
-
-  function handleDelete(user: User) {
-    if (window.confirm(`Excluir os dados de ${user.name}?`)) {
-      deleteMutation.mutate(user.id);
-    }
-  }
 
   return (
     <main className="page">
@@ -71,7 +70,12 @@ export function UsersPage() {
                       <button type="button" onClick={() => setEditingUser(user)}>
                         Editar nome
                       </button>
-                      <button type="button" className="button-danger" onClick={() => handleDelete(user)}>
+                      <button
+                        type="button"
+                        className="button-danger"
+                        aria-label={`Excluir ${user.name}`}
+                        onClick={() => setDeletingUser(user)}
+                      >
                         Excluir
                       </button>
                     </td>
@@ -91,6 +95,22 @@ export function UsersPage() {
           onClose={() => setEditingUser(null)}
           onSubmit={(data) => renameMutation.mutate({ id: editingUser.id, data })}
         />
+      )}
+
+      {deletingUser && (
+        <ConfirmDialog
+          title="Excluir dados do usuário"
+          confirmLabel="Excluir"
+          pendingLabel="Excluindo..."
+          isPending={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate(deletingUser.id)}
+          onCancel={() => setDeletingUser(null)}
+        >
+          <p>
+            A ficha e a agenda de <strong>{deletingUser.name}</strong> saem do User Manager. A conta de login
+            continua no Keycloak.
+          </p>
+        </ConfirmDialog>
       )}
     </main>
   );

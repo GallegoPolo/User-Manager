@@ -144,6 +144,18 @@ button:disabled {
   color: var(--danger);
 }
 
+.button-danger-solid {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.button-danger-solid:hover {
+  background: #f6bab2;
+  color: var(--accent-ink);
+}
+
 input,
 select,
 textarea {
@@ -370,6 +382,15 @@ label {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.confirm-message {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.confirm-message strong {
+  color: var(--text);
 }
 
 .modal-actions {

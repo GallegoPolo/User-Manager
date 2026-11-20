@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ApiError } from "../../../shared/api/apiClient";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { ContactFormModal } from "../components/ContactFormModal";
 import {
   useContacts,
@@ -30,6 +31,7 @@ export function ContactsPage() {
   const removeContact = useDeleteContact();
   const [editing, setEditing] = useState<Editing>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  const [deleting, setDeleting] = useState<Contact | null>(null);
 
   function openForm(contact?: Contact) {
     saveContact.reset();
@@ -53,14 +55,20 @@ export function ContactsPage() {
     });
   }
 
-  function handleDelete(contact: Contact) {
-    if (!window.confirm(`Excluir ${contact.name} da sua agenda?`)) return;
+  function askToDelete(contact: Contact) {
+    setNotice(null);
+    setDeleting(contact);
+  }
 
+  function handleDelete(contact: Contact) {
     removeContact.mutate(contact.id, {
       onSuccess: () => setNotice({ kind: "ok", text: "Contato excluído." }),
       onError: (error) =>
         setNotice(isNotFound(error) ? missingContactNotice : { kind: "warn", text: "Não foi possível excluir. Tente de novo." }),
-      onSettled: () => refreshContacts(),
+      onSettled: () => {
+        setDeleting(null);
+        refreshContacts();
+      },
     });
   }
 
@@ -117,7 +125,7 @@ export function ContactsPage() {
                       type="button"
                       className="button-danger"
                       aria-label={`Excluir ${contact.name}`}
-                      onClick={() => handleDelete(contact)}
+                      onClick={() => askToDelete(contact)}
                     >
                       Excluir
                     </button>
@@ -138,6 +146,21 @@ export function ContactsPage() {
           onClose={() => setEditing(null)}
           onSubmit={(data) => handleSave({ id: editing.contact?.id, data })}
         />
+      )}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Excluir contato"
+          confirmLabel="Excluir"
+          pendingLabel="Excluindo..."
+          isPending={removeContact.isPending}
+          onConfirm={() => handleDelete(deleting)}
+          onCancel={() => setDeleting(null)}
+        >
+          <p>
+            <strong>{deleting.name}</strong> sai da sua agenda. Isso não pode ser desfeito.
+          </p>
+        </ConfirmDialog>
       )}
     </main>
   );

@@ -61,7 +61,6 @@ beforeEach(() => {
     deletedElsewhere: new Set(),
   };
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => handle(url, init)));
-  vi.spyOn(window, "confirm").mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -69,6 +68,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
+async function confirmDeletion() {
+  await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Excluir" }));
+}
 
 function renderPage() {
   return renderWithProviders(<ContactsPage />, { session: aSession(), route: "/contacts" });
@@ -131,17 +134,34 @@ describe("ContactsPage", () => {
     api.deletedElsewhere.add("c1");
 
     await userEvent.click(within(table).getByRole("button", { name: "Excluir Bruno Lima" }));
+    await confirmDeletion();
 
     expect((await screen.findByRole("status")).textContent).toBe("Esse contato não existe mais. A lista foi atualizada.");
     await waitFor(() => expect(screen.queryByText("Bruno Lima")).toBeNull());
   });
 
-  it("ContactsPage_DeleteCancelled_KeepsContact", async () => {
-    vi.mocked(window.confirm).mockReturnValue(false);
+  it("ContactsPage_Delete_AsksInAppAndRemoves", async () => {
     renderPage();
     const table = await screen.findByRole("table");
 
     await userEvent.click(within(table).getByRole("button", { name: "Excluir Bruno Lima" }));
+    const dialog = screen.getByRole("dialog", { name: "Excluir contato" });
+    expect(dialog.textContent).toContain("Bruno Lima");
+    await confirmDeletion();
+
+    expect((await screen.findByRole("status")).textContent).toBe("Contato excluído.");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByText("Bruno Lima")).toBeNull());
+  });
+
+  it("ContactsPage_DeleteCancelled_KeepsContact", async () => {
+    renderPage();
+    const table = await screen.findByRole("table");
+
+    await userEvent.click(within(table).getByRole("button", { name: "Excluir Bruno Lima" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
 
     expect(within(table).getByText("Bruno Lima")).toBeDefined();
     expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(false);
