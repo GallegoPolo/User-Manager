@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     void queryClient
-      .fetchQuery({ queryKey: sessionKey, queryFn: getSessionUser, staleTime: 0 })
+      .fetchQuery({ queryKey: sessionKey, queryFn: getSessionUser, staleTime: 0, retry: false })
       .catch(() => user)
       .then((current) => window.location.assign(current?.logoutUrl ?? "/"));
   }, [queryClient, user]);
