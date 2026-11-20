@@ -1,12 +1,15 @@
 import { useCallback, useMemo, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSessionUser, redirectToLogin } from "../api/bffSession";
 import type { Role } from "../types/auth";
 import { AuthContext } from "./AuthContextDefinition";
 
+const sessionKey = ["session"];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const { data: user = null, isLoading } = useQuery({
-    queryKey: ["session"],
+    queryKey: sessionKey,
     queryFn: getSessionUser,
     staleTime: Infinity,
     retry: false,
@@ -23,8 +26,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    if (user) window.location.assign(user.logoutUrl);
-  }, [user]);
+    void queryClient
+      .fetchQuery({ queryKey: sessionKey, queryFn: getSessionUser, staleTime: 0 })
+      .catch(() => user)
+      .then((current) => window.location.assign(current?.logoutUrl ?? "/"));
+  }, [queryClient, user]);
 
   const value = useMemo(
     () => ({
