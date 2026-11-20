@@ -1,10 +1,54 @@
+export interface FieldError {
+  property: string;
+  message: string;
+}
+
 export class ApiError extends Error {
   readonly status: number;
+  readonly errors: FieldError[];
 
-  constructor(status: number, url: string) {
+  constructor(status: number, url: string, errors: FieldError[] = []) {
     super(`Erro ${status} em ${url}`);
     this.status = status;
+    this.errors = errors;
   }
+}
+
+const generalFailure = "Não foi possível salvar. Tente de novo.";
+
+function isFieldError(value: unknown): value is FieldError {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as FieldError).property === "string" &&
+    typeof (value as FieldError).message === "string"
+  );
+}
+
+async function readFieldErrors(response: Response): Promise<FieldError[]> {
+  try {
+    const body: unknown = await response.json();
+    const list = Array.isArray(body) ? body : (body as { errors?: unknown } | null)?.errors;
+
+    return Array.isArray(list) ? list.filter(isFieldError) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function fieldErrorsOf(error: unknown, knownFields: string[]): Record<string, string> {
+  if (!error) return {};
+  if (!(error instanceof ApiError) || error.errors.length === 0) return { general: generalFailure };
+
+  const result: Record<string, string> = {};
+
+  for (const { property, message } of error.errors) {
+    const field = property.toLowerCase();
+    const key = knownFields.includes(field) ? field : "general";
+    result[key] ??= message;
+  }
+
+  return result;
 }
 
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -21,7 +65,7 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new ApiError(response.status, url);
+    throw new ApiError(response.status, url, await readFieldErrors(response));
   }
 
   if (response.status === 204) return undefined as T;
