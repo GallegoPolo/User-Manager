@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "../../../shared/api/apiClient";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { LoadError } from "../../../shared/components/LoadError";
 import { ContactFormModal } from "../components/ContactFormModal";
 import {
   useContacts,
@@ -25,7 +26,7 @@ function countLabel(total: number) {
 }
 
 export function ContactsPage() {
-  const { data: contacts, isLoading, isError } = useContacts();
+  const { data: contacts, isLoading, error: loadError } = useContacts();
   const refreshContacts = useRefreshContacts();
   const saveContact = useSaveContact();
   const removeContact = useDeleteContact();
@@ -91,7 +92,7 @@ export function ContactsPage() {
       )}
 
       {isLoading && <p className="loading">Carregando...</p>}
-      {isError && <p className="page-error">Não foi possível carregar a agenda.</p>}
+      {loadError && <LoadError error={loadError} what="a agenda" />}
 
       {contacts?.length === 0 && (
         <div className="empty-state">

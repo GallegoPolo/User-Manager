@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { LoadError } from "../../../shared/components/LoadError";
 import { getMe, renameMe } from "../api/UserService";
 import { UserFormModal } from "../components/UserFormModal";
 
@@ -32,7 +33,7 @@ export function MePage() {
       </div>
 
       {isLoading && <p className="loading">Carregando...</p>}
-      {error && <p className="page-error">Erro ao carregar.</p>}
+      {error && <LoadError error={error} what="sua conta" />}
 
       {me && (
         <dl className="details">

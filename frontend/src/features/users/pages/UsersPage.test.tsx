@@ -46,3 +46,12 @@ describe("UsersPage", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+describe("UsersPage without permission", () => {
+  it("UsersPage_Forbidden_SaysNoAccessInsteadOfFailure", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json(403)));
+    renderWithProviders(<UsersPage />, { session: aSession(), route: "/users" });
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Você não tem acesso a esta página.");
+  });
+});

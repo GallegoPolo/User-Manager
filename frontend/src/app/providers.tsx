@@ -3,6 +3,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@ta
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "../features/auth/context/AuthContext";
 import { ApiError } from "../shared/api/apiClient";
+import { retryOnlyTransientFailures } from "../shared/api/retryPolicy";
 
 function endSessionOnUnauthorized(error: Error) {
   if (error instanceof ApiError && error.status === 401) {
@@ -13,6 +14,7 @@ function endSessionOnUnauthorized(error: Error) {
 const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: endSessionOnUnauthorized }),
   mutationCache: new MutationCache({ onError: endSessionOnUnauthorized }),
+  defaultOptions: { queries: { retry: retryOnlyTransientFailures } },
 });
 
 export function AppProviders({ children }: { children: ReactNode }) {

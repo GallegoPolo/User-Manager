@@ -1,7 +1,8 @@
+import { LoadError } from "../../../shared/components/LoadError";
 import { useAuditLogs } from "../hooks/useAuditLogs";
 
 export function AuditPage() {
-  const { data, isLoading, isError, refetch, isFetching } = useAuditLogs();
+  const { data, isLoading, error, refetch, isFetching } = useAuditLogs();
 
   return (
     <main className="page">
@@ -13,7 +14,7 @@ export function AuditPage() {
       </div>
 
       {isLoading && <p className="loading">Carregando logs...</p>}
-      {isError && <p className="page-error">Falha ao carregar logs de auditoria.</p>}
+      {error && <LoadError error={error} what="a auditoria" />}
 
       {data && data.items.length === 0 && <p>Nenhum log encontrado.</p>}
 

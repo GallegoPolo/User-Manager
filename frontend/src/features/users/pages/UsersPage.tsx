@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { LoadError } from "../../../shared/components/LoadError";
 import { useAuth } from "../../auth/context/useAuth";
 import { deleteUser, getUsers, renameUser } from "../api/UserService";
 import { UserFormModal } from "../components/UserFormModal";
@@ -45,7 +46,7 @@ export function UsersPage() {
       </div>
 
       {isLoading && <p className="loading">Carregando...</p>}
-      {error && <p className="page-error">Erro ao carregar.</p>}
+      {error && <LoadError error={error} what="os usuários" />}
       {users?.length === 0 && <p>Ninguém entrou no sistema ainda.</p>}
 
       {users && users.length > 0 && (
