@@ -25,17 +25,17 @@ export function MePage() {
       <div className="page-header">
         <h1>Minha conta</h1>
         {me && (
-          <button type="button" onClick={() => setEditing(true)}>
+          <button type="button" className="button-primary" onClick={() => setEditing(true)}>
             Editar nome
           </button>
         )}
       </div>
 
-      {isLoading && <p>Carregando...</p>}
+      {isLoading && <p className="loading">Carregando...</p>}
       {error && <p className="page-error">Erro ao carregar.</p>}
 
       {me && (
-        <dl>
+        <dl className="details">
           <dt>Nome</dt>
           <dd>{me.name}</dd>
           <dt>E-mail</dt>

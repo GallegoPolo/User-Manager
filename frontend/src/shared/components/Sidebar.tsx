@@ -12,8 +12,13 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <strong>User Manager</strong>
-        {user?.name && <small>{user.name}</small>}
+        <span className="sidebar-brand-mark" aria-hidden="true">
+          U
+        </span>
+        <div>
+          <strong>User Manager</strong>
+          {user?.name && <small>{user.name}</small>}
+        </div>
       </div>
 
       <nav className="sidebar-nav">

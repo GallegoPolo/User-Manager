@@ -12,32 +12,34 @@ export function AuditPage() {
         </button>
       </div>
 
-      {isLoading && <p>Carregando logs...</p>}
-      {isError && <p>Falha ao carregar logs de auditoria.</p>}
+      {isLoading && <p className="loading">Carregando logs...</p>}
+      {isError && <p className="page-error">Falha ao carregar logs de auditoria.</p>}
 
       {data && data.items.length === 0 && <p>Nenhum log encontrado.</p>}
 
       {data && data.items.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Tipo</th>
-              <th>Data</th>
-              <th>Aggregate ID</th>
-              <th>Quem fez</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.items.map((log) => (
-              <tr key={log.id}>
-                <td>{log.eventType}</td>
-                <td>{new Date(log.timestamp).toLocaleString("pt-BR")}</td>
-                <td>{log.aggregateId}</td>
-                <td>{log.performedBy}</td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Data</th>
+                <th>Aggregate ID</th>
+                <th>Quem fez</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.items.map((log) => (
+                <tr key={log.id}>
+                  <td>{log.eventType}</td>
+                  <td>{new Date(log.timestamp).toLocaleString("pt-BR")}</td>
+                  <td className="mono">{log.aggregateId}</td>
+                  <td className="mono">{log.performedBy}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   );

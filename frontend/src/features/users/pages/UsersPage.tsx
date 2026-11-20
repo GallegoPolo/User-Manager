@@ -45,40 +45,42 @@ export function UsersPage() {
         <h1>Usuários</h1>
       </div>
 
-      {isLoading && <p>Carregando...</p>}
+      {isLoading && <p className="loading">Carregando...</p>}
       {error && <p className="page-error">Erro ao carregar.</p>}
       {users?.length === 0 && <p>Ninguém entrou no sistema ainda.</p>}
 
       {users && users.length > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Email</th>
-              <th>Criado em</th>
-              {canManage && <th>Ações</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>{user.name}</td>
-                <td>{user.email}</td>
-                <td>{new Date(user.createdAt).toLocaleDateString("pt-BR")}</td>
-                {canManage && (
-                  <td className="table-actions">
-                    <button type="button" onClick={() => setEditingUser(user)}>
-                      Editar nome
-                    </button>
-                    <button type="button" onClick={() => handleDelete(user)}>
-                      Excluir
-                    </button>
-                  </td>
-                )}
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Criado em</th>
+                {canManage && <th>Ações</th>}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>{new Date(user.createdAt).toLocaleDateString("pt-BR")}</td>
+                  {canManage && (
+                    <td className="table-actions">
+                      <button type="button" onClick={() => setEditingUser(user)}>
+                        Editar nome
+                      </button>
+                      <button type="button" className="button-danger" onClick={() => handleDelete(user)}>
+                        Excluir
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {editingUser && (
