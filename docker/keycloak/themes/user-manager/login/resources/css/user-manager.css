@@ -25,6 +25,7 @@
   --um-accent-hover: #e0b487;
   --um-accent-ink: #1c1410;
   --um-danger: #f2a49a;
+  --um-success: #8fcb9b;
 
   color-scheme: dark;
 
@@ -45,6 +46,9 @@
   --pf-v5-global--link--Color--hover: var(--um-accent-hover);
   --pf-v5-global--danger-color--100: var(--um-danger);
   --pf-v5-global--danger-color--200: var(--um-danger);
+  --pf-v5-global--info-color--200: #9cc7ef;
+  --pf-v5-global--success-color--200: var(--um-success);
+  --pf-v5-global--warning-color--200: #f0c674;
 }
 
 .login-pf body {
@@ -152,10 +156,15 @@ a {
   color: var(--um-text-muted);
 }
 
-.pf-v5-c-alert {
+.pf-v5-c-alert,
+.pf-v5-c-alert.pf-m-inline {
   --pf-v5-c-alert--BackgroundColor: var(--um-surface-raised);
   --pf-v5-c-alert__title--Color: var(--um-text);
   border-radius: 12px;
+}
+
+.pf-v5-c-alert .kc-feedback-text {
+  color: var(--um-text);
 }
 
 .pf-v5-c-helper-text__item.pf-m-error,

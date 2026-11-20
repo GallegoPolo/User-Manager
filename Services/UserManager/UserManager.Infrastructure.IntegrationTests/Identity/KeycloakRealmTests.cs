@@ -246,6 +246,24 @@ public sealed partial class KeycloakRealmTests : IClassFixture<KeycloakFixture>
         Assert.Matches(UserManagerStylesheetHref(), browser.Html);
     }
 
+    [Fact]
+    public async Task ResetPasswordSentPage_ShowsInlineAlertThatThemeRestyles()
+    {
+        // Arrange
+        using var browser = new BrokerBrowser(_keycloak.KeycloakUrl);
+        await browser.OpenLoginPageAsync();
+        await browser.ClickForgotPasswordAsync();
+
+        // Act
+        await browser.SubmitFirstFormAsync(("username", "ana"));
+        var css = File.ReadAllText(Path.Combine(KeycloakFixture.ThemeDirectory, "login", "resources", "css", "user-manager.css"));
+
+        // Assert
+        Assert.Contains("pf-m-inline", browser.Html);
+        Assert.Contains(".pf-v5-c-alert.pf-m-inline", css);
+        Assert.Contains(".pf-v5-c-alert .kc-feedback-text", css);
+    }
+
     private static JsonElement RealmFile() =>
         JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Identity", "user-manager-realm.json"))).RootElement;
 
