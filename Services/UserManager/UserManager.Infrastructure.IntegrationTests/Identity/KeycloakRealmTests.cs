@@ -214,6 +214,32 @@ public sealed partial class KeycloakRealmTests : IClassFixture<KeycloakFixture>
     }
 
     [Fact]
+    public void RealmFile_DefaultsToBrazilianPortuguese()
+    {
+        // Act
+        var realm = RealmFile();
+
+        // Assert
+        Assert.True(realm.GetProperty("internationalizationEnabled").GetBoolean());
+        Assert.Equal("pt-BR", realm.GetProperty("defaultLocale").GetString());
+        Assert.Contains("pt-BR", StringsOf(realm, "supportedLocales"));
+    }
+
+    [Fact]
+    public async Task LoginPage_WithoutLanguagePreference_IsInPortuguese()
+    {
+        // Arrange
+        using var browser = new BrokerBrowser(_keycloak.KeycloakUrl);
+
+        // Act
+        await browser.OpenLoginPageAsync();
+
+        // Assert
+        Assert.Contains("Entrar", browser.Html);
+        Assert.DoesNotContain("Sign in to your account", browser.Html);
+    }
+
+    [Fact]
     public async Task LoginPage_LoadsUserManagerStylesheetAndItIsServed()
     {
         // Arrange

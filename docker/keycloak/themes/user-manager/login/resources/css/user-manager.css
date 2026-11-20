@@ -181,3 +181,22 @@ a {
 #social-github svg {
   filter: invert(1);
 }
+
+.pf-v5-c-login__main-header-utilities .pf-v5-c-form-control {
+  width: 12.5rem;
+  margin-inline-start: auto;
+}
+
+div.pf-v5-c-login__main-header:has(.pf-v5-c-login__main-header-utilities) {
+  grid-template-columns: 100%;
+}
+
+.pf-v5-c-login__main-header-utilities {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.pf-v5-c-login__main-header > .pf-v5-c-title {
+  grid-column: 1;
+  grid-row: 2;
+}
