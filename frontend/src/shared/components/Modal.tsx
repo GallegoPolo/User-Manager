@@ -3,10 +3,11 @@ import { useEffect, useId, useRef, type MouseEvent, type ReactNode, type Synthet
 interface Props {
   title: string;
   onClose: () => void;
+  dismissible?: boolean;
   children: ReactNode;
 }
 
-export function Modal({ title, onClose, children }: Props) {
+export function Modal({ title, onClose, dismissible = true, children }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -14,20 +15,22 @@ export function Modal({ title, onClose, children }: Props) {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
+    const opener = document.activeElement;
     if (!dialog.open) dialog.showModal();
 
     return () => {
       if (dialog.open) dialog.close();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
   }, []);
 
   function handleCancel(event: SyntheticEvent<HTMLDialogElement>) {
     event.preventDefault();
-    onClose();
+    if (dismissible) onClose();
   }
 
   function handleBackdropClick(event: MouseEvent<HTMLDialogElement>) {
-    if (event.target === event.currentTarget) onClose();
+    if (dismissible && event.target === event.currentTarget) onClose();
   }
 
   return (

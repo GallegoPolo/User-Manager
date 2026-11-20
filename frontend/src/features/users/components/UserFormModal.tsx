@@ -18,7 +18,7 @@ export function UserFormModal({ user, isSaving, onClose, onSubmit }: Props) {
   }
 
   return (
-    <Modal title="Nome de exibição" onClose={onClose}>
+    <Modal title="Nome de exibição" onClose={onClose} dismissible={!isSaving}>
       <form onSubmit={handleSubmit}>
         <div className="field">
           <label htmlFor="name">Nome</label>

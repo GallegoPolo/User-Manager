@@ -25,12 +25,24 @@ function isFieldError(value: unknown): value is FieldError {
   );
 }
 
+function fromDictionary(errors: object): FieldError[] {
+  return Object.entries(errors).flatMap(([key, messages]) =>
+    Array.isArray(messages)
+      ? messages
+          .filter((message): message is string => typeof message === "string")
+          .map((message) => ({ property: key.replace(/^\$\./, ""), message }))
+      : [],
+  );
+}
+
 async function readFieldErrors(response: Response): Promise<FieldError[]> {
   try {
     const body: unknown = await response.json();
-    const list = Array.isArray(body) ? body : (body as { errors?: unknown } | null)?.errors;
+    const errors = Array.isArray(body) ? body : (body as { errors?: unknown } | null)?.errors;
 
-    return Array.isArray(list) ? list.filter(isFieldError) : [];
+    if (Array.isArray(errors)) return errors.filter(isFieldError);
+    if (typeof errors === "object" && errors !== null) return fromDictionary(errors);
+    return [];
   } catch {
     return [];
   }

@@ -30,4 +30,34 @@ describe("Modal", () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("Modal_NotDismissible_IgnoresEscape", () => {
+    const onClose = vi.fn();
+    render(
+      <Modal title="Novo contato" onClose={onClose} dismissible={false}>
+        <p>conteúdo</p>
+      </Modal>,
+    );
+
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("Modal_Unmounted_ReturnsFocusToOpener", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(
+      <Modal title="Novo contato" onClose={() => {}}>
+        <input aria-label="campo" />
+      </Modal>,
+    );
+    screen.getByLabelText("campo").focus();
+    unmount();
+
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
 });

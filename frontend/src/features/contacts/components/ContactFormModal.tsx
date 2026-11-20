@@ -57,7 +57,7 @@ export function ContactFormModal({ contact, isSaving, error, onClose, onSubmit }
   }
 
   return (
-    <Modal title={contact ? "Editar contato" : "Novo contato"} onClose={onClose}>
+    <Modal title={contact ? "Editar contato" : "Novo contato"} onClose={onClose} dismissible={!isSaving}>
       <form onSubmit={handleSubmit} noValidate>
         {errors.general && (
           <p role="alert" className="form-alert">

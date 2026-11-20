@@ -39,6 +39,14 @@ describe("apiClient", () => {
     expect(error.errors).toEqual([{ property: "Database", message: "A record with this value already exists." }]);
   });
 
+  it("ApiError_WithValidationProblemDictionary_HasFieldErrors", async () => {
+    respondWith(400, JSON.stringify({ title: "One or more validation errors occurred.", errors: { "$.name": ["The JSON value could not be converted."] } }));
+
+    const error = await errorOf(apiClient.post("/api/me/contacts", {}));
+
+    expect(error.errors).toEqual([{ property: "name", message: "The JSON value could not be converted." }]);
+  });
+
   it("ApiError_WithNonJsonBody_HasNoFieldErrors", async () => {
     respondWith(502, "<html>Bad Gateway</html>", "text/html");
 
