@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
-import { LoginPage } from "../features/auth/pages/LoginPage";
+import { LandingPage } from "../features/landing/pages/LandingPage";
 import { MePage } from "../features/users/pages/MePage";
 import { UsersPage } from "../features/users/pages/UsersPage";
 import { AuditPage } from "../features/audit/pages/AuditPage";
@@ -9,7 +9,7 @@ import { AppLayout } from "../shared/components/AppLayout";
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<LandingPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
@@ -19,8 +19,7 @@ export default function App() {
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/me" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

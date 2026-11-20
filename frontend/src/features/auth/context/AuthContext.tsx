@@ -17,7 +17,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
-  const login = useCallback(() => redirectToLogin(window.location.pathname), []);
+  const login = useCallback(
+    (returnUrl?: string) => redirectToLogin(returnUrl ?? window.location.pathname),
+    [],
+  );
 
   const logout = useCallback(() => {
     if (user) window.location.assign(user.logoutUrl);

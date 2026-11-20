@@ -6,7 +6,7 @@ export interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   hasRole: (...roles: Role[]) => boolean;
-  login: () => void;
+  login: (returnUrl?: string) => void;
   logout: () => void;
 }
 
