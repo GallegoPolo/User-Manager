@@ -44,6 +44,36 @@ describe("Modal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("Modal_DragFromInsideToBackdrop_StaysOpen", () => {
+    const onClose = vi.fn();
+    render(
+      <Modal title="Novo contato" onClose={onClose}>
+        <input aria-label="campo" />
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+
+    fireEvent.mouseDown(screen.getByLabelText("campo"));
+    fireEvent.click(dialog);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("Modal_ClickOnBackdrop_CallsOnClose", () => {
+    const onClose = vi.fn();
+    render(
+      <Modal title="Novo contato" onClose={onClose}>
+        <input aria-label="campo" />
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+
+    fireEvent.mouseDown(dialog);
+    fireEvent.click(dialog);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("Modal_Unmounted_ReturnsFocusToOpener", () => {
     const opener = document.createElement("button");
     document.body.appendChild(opener);

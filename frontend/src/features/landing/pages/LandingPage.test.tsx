@@ -48,6 +48,23 @@ describe("LandingPage", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("LandingPage_PauseButton_StopsAndResumesAnimations", async () => {
+    const { container } = renderWithProviders(<LandingPage />, { session: null });
+    const landing = container.querySelector(".landing")!;
+
+    await userEvent.click(screen.getByRole("button", { name: "Pausar animações" }));
+    expect(landing.classList.contains("landing--paused")).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "Retomar animações" }));
+    expect(landing.classList.contains("landing--paused")).toBe(false);
+  });
+
+  it("LandingPage_DoesNotPromiseProvidersThatMayBeOff", () => {
+    renderWithProviders(<LandingPage />, { session: null });
+
+    expect(screen.queryByText(/GitHub|Google/)).toBeNull();
+  });
+
   it("LandingPage_AuditFeed_SaysItIsAnExample", () => {
     renderWithProviders(<LandingPage />, { session: null });
 

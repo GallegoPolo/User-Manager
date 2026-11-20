@@ -200,3 +200,9 @@ div.pf-v5-c-login__main-header:has(.pf-v5-c-login__main-header-utilities) {
   grid-column: 1;
   grid-row: 2;
 }
+
+.pf-v5-c-form-control input::placeholder,
+.pf-v5-c-form-control textarea::placeholder {
+  color: var(--um-text-muted);
+  opacity: 1;
+}

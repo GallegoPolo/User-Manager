@@ -4,7 +4,7 @@
   flex-direction: column;
   gap: 48px;
   padding: 28px clamp(16px, 5vw, 72px) 56px;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .landing-header {
@@ -326,5 +326,31 @@
 @keyframes landing-blink {
   50% {
     opacity: 0.25;
+  }
+}
+
+.landing-motion-toggle {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.landing--paused *,
+.landing--paused *::before,
+.landing--paused *::after {
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-motion-toggle {
+    display: none;
+  }
+
+  .feed-window {
+    height: auto;
+  }
+
+  .feed-row[aria-hidden="true"] {
+    display: none;
   }
 }

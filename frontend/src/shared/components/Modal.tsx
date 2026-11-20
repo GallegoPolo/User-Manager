@@ -10,6 +10,7 @@ interface Props {
 export function Modal({ title, onClose, dismissible = true, children }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const pressStartedOnBackdrop = useRef(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -29,8 +30,14 @@ export function Modal({ title, onClose, dismissible = true, children }: Props) {
     if (dismissible) onClose();
   }
 
+  function rememberPressTarget(event: MouseEvent<HTMLDialogElement>) {
+    pressStartedOnBackdrop.current = event.target === event.currentTarget;
+  }
+
   function handleBackdropClick(event: MouseEvent<HTMLDialogElement>) {
-    if (dismissible && event.target === event.currentTarget) onClose();
+    const clickedBackdrop = pressStartedOnBackdrop.current && event.target === event.currentTarget;
+    pressStartedOnBackdrop.current = false;
+    if (dismissible && clickedBackdrop) onClose();
   }
 
   return (
@@ -39,6 +46,7 @@ export function Modal({ title, onClose, dismissible = true, children }: Props) {
       className="modal-card"
       aria-labelledby={titleId}
       onCancel={handleCancel}
+      onMouseDown={rememberPressTarget}
       onClick={handleBackdropClick}
     >
       <div className="modal-body">

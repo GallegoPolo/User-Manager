@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import type { ReturnState } from "../../auth/components/ProtectedRoute";
 import { useAuth } from "../../auth/context/useAuth";
@@ -44,9 +45,19 @@ function FailedLoginWarning() {
   );
 }
 
-export function LandingPage() {
+function MotionToggle({ paused, onToggle }: { paused: boolean; onToggle: () => void }) {
   return (
-    <div className="landing">
+    <button type="button" className="landing-motion-toggle" onClick={onToggle}>
+      {paused ? "Retomar animações" : "Pausar animações"}
+    </button>
+  );
+}
+
+export function LandingPage() {
+  const [paused, setPaused] = useState(false);
+
+  return (
+    <div className={paused ? "landing landing--paused" : "landing"}>
       <header className="landing-header">
         <div className="landing-brand">
           <span className="sidebar-brand-mark" aria-hidden="true">
@@ -54,6 +65,7 @@ export function LandingPage() {
           </span>
           <strong>User Manager</strong>
         </div>
+        <MotionToggle paused={paused} onToggle={() => setPaused((value) => !value)} />
       </header>
 
       <main className="landing-main">
@@ -70,7 +82,7 @@ export function LandingPage() {
             <FailedLoginWarning />
             <div className="landing-actions">
               <MainAction />
-              <span className="landing-hint">com e-mail, GitHub ou Google</span>
+              <span className="landing-hint">login seguro pelo Keycloak</span>
             </div>
           </div>
           <ContactOrbit />
@@ -80,7 +92,7 @@ export function LandingPage() {
           <AuditExampleFeed />
           <article className="landing-card">
             <h2>Um login</h2>
-            <p>E-mail e senha, GitHub ou Google. Contas só se juntam quando você prova que é dona.</p>
+            <p>E-mail e senha ou uma conta social. Contas só se juntam quando você prova que é dona.</p>
           </article>
           <article className="landing-card">
             <h2>Nada se perde</h2>
