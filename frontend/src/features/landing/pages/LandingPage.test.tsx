@@ -42,6 +42,20 @@ describe("LandingPage", () => {
     expect(screen.getByRole("button", { name: "Entrar na minha agenda" })).toBeDefined();
   });
 
+  it("LandingPage_LoginUnavailable_AsksToTryLater", () => {
+    renderWithProviders(<LandingPage />, { session: null, route: "/?login=indisponivel" });
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "O login está indisponível agora. Tente de novo em alguns minutos.",
+    );
+  });
+
+  it("LandingPage_AfterFailedLoginWhileSessionLoads_ShowsNoWarningYet", () => {
+    renderWithProviders(<LandingPage />, { session: undefined, route: "/?login=falhou" });
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("LandingPage_AfterFailedLoginButSignedInElsewhere_ShowsNoWarning", () => {
     renderWithProviders(<LandingPage />, { session: aSession(), route: "/?login=falhou" });
 

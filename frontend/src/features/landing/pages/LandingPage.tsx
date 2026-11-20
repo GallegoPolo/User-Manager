@@ -32,15 +32,21 @@ function MainAction() {
   );
 }
 
-function FailedLoginWarning() {
-  const { isAuthenticated } = useAuth();
-  const [searchParams] = useSearchParams();
+const loginProblems: Record<string, string> = {
+  falhou: "Esse login não pôde ser concluído. Se ele já foi feito em outra aba, use aquela aba; senão, entre de novo.",
+  indisponivel: "O login está indisponível agora. Tente de novo em alguns minutos.",
+};
 
-  if (isAuthenticated || searchParams.get("login") !== "falhou") return null;
+function LoginProblemWarning() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const problem = loginProblems[searchParams.get("login") ?? ""];
+
+  if (isLoading || isAuthenticated || !problem) return null;
 
   return (
     <p role="alert" className="notice notice--warn">
-      Esse login não pôde ser concluído. Se ele já foi feito em outra aba, use aquela aba; senão, entre de novo.
+      {problem}
     </p>
   );
 }
@@ -79,7 +85,7 @@ export function LandingPage() {
               Uma agenda pessoal com login único, sessão segura e auditoria que chega mesmo quando algo
               falha no caminho.
             </p>
-            <FailedLoginWarning />
+            <LoginProblemWarning />
             <div className="landing-actions">
               <MainAction />
               <span className="landing-hint">login seguro pelo Keycloak</span>

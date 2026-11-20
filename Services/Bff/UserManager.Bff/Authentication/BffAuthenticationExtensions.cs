@@ -11,6 +11,7 @@ public static class BffAuthenticationExtensions
     public const string SessionCookieName = "__Host-user-manager";
 
     public const string FailedLoginHome = "/?login=falhou";
+    public const string UnavailableLoginHome = "/?login=indisponivel";
 
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(8);
 
@@ -85,15 +86,32 @@ public static class BffAuthenticationExtensions
 
     private static Task SendHomeAfterFailedLogin(RemoteFailureContext context)
     {
-        context.HttpContext.RequestServices
+        var logger = context.HttpContext.RequestServices
             .GetRequiredService<ILoggerFactory>()
-            .CreateLogger(typeof(BffAuthenticationExtensions))
-            .LogWarning(context.Failure, "Login remoto nao concluido; a pessoa volta para a pagina inicial");
+            .CreateLogger(typeof(BffAuthenticationExtensions));
 
-        context.Response.Redirect(FailedLoginHome);
+        if (IsStaleOrCancelledLogin(context.Failure))
+        {
+            logger.LogWarning(context.Failure, "Login antigo ou cancelado; a pessoa volta para a pagina inicial");
+            context.Response.Redirect(FailedLoginHome);
+        }
+        else
+        {
+            logger.LogError(context.Failure, "Login falhou na troca com o provedor de identidade");
+            context.Response.Redirect(UnavailableLoginHome);
+        }
+
         context.HandleResponse();
         return Task.CompletedTask;
     }
+
+    private static bool IsStaleOrCancelledLogin(Exception? failure) => failure?.Message switch
+    {
+        "Correlation failed." => true,
+        { } message when message.Contains("message.State", StringComparison.Ordinal) => true,
+        { } message when message.Contains("'access_denied'", StringComparison.Ordinal) => true,
+        _ => false
+    };
 
     private static Task RespondWith(HttpResponse response, int statusCode)
     {
