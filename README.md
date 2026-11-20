@@ -130,7 +130,7 @@ docker compose up -d keycloak
 
 Isso apaga as contas criadas no Keycloak, e as pessoas de teste ganham um `sub` novo: no próximo login o UserManager cria outra ficha, e a ficha e a agenda antigas ficam sem dono no banco local.
 
-**Tema de login.** A realm usa o tema `user-manager` (`docker/keycloak/themes/user-manager`), montado no container: é só CSS herdando do `keycloak.v2` (`styles=css/styles.css css/user-manager.css`, o nosso por último), com as mesmas cores e fontes do frontend. No `start-dev` o cache de tema vem desligado, então editar o CSS vale ao recarregar a página. Como o `loginTheme` mora na realm, um volume `keycloakdata` criado antes dele precisa ser recriado (comandos acima) ou receber o tema em **Realm settings → Themes → Login theme**.
+**Tema de login.** A realm usa o tema `user-manager` (`docker/keycloak/themes/user-manager`), montado no container: é só CSS herdando do `keycloak.v2` (`styles=css/styles.css css/user-manager.css`, o nosso por último), com as mesmas cores e fontes do frontend. No `start-dev` o cache de tema vem desligado, então editar o CSS vale ao recarregar a página. Como o `loginTheme` mora na realm, um volume `keycloakdata` criado antes dele precisa ser recriado (comandos acima) ou receber o tema em **Realm settings → Themes → Login theme**. As telas vêm em português (`defaultLocale: pt-BR`, com inglês no seletor de idioma); num volume antigo, ligue em **Realm settings → Localization**.
 
 ### Login com GitHub (opcional)
 
@@ -232,7 +232,7 @@ Abra http://localhost:5173: a capa pública mostra **Entrar na minha agenda** (o
 
 Organização feature-first:
 
-- `features/landing` — capa pública em `/`, animada (as animações param com "reduzir movimento" do sistema)  
+- `features/landing` — capa pública em `/`, animada (as animações param com "reduzir movimento" do sistema ou pelo botão "Pausar animações")  
 - `features/contacts` — agenda em `/contacts` (`/api/me/contacts`): listar, criar, editar e excluir, com os erros da API embaixo de cada campo  
 - `features/auth` — sessão do BFF (`/bff/user`), login e logout por redirecionamento, rotas protegidas  
 - `features/users` — minha conta (`/api/me`) e lista de usuários (`viewer`/`operator`; editar nome e excluir só `operator`)  
