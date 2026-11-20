@@ -130,6 +130,8 @@ docker compose up -d keycloak
 
 Isso apaga as contas criadas no Keycloak, e as pessoas de teste ganham um `sub` novo: no próximo login o UserManager cria outra ficha, e a ficha e a agenda antigas ficam sem dono no banco local.
 
+**Tema de login.** A realm usa o tema `user-manager` (`docker/keycloak/themes/user-manager`), montado no container: é só CSS herdando do `keycloak.v2` (`styles=css/styles.css css/user-manager.css`, o nosso por último), com as mesmas cores e fontes do frontend. No `start-dev` o cache de tema vem desligado, então editar o CSS vale ao recarregar a página. Como o `loginTheme` mora na realm, um volume `keycloakdata` criado antes dele precisa ser recriado (comandos acima) ou receber o tema em **Realm settings → Themes → Login theme**.
+
 ### Login com GitHub (opcional)
 
 Sem configuração nenhuma, tudo sobe normalmente: o botão do GitHub não aparece e o login por e-mail e senha funciona. Para ligar:
@@ -224,18 +226,23 @@ O consumidor é idempotente (índice único em `eventId` no MongoDB), então rep
 
 ### Login
 
-Abra http://localhost:5173 e clique em **Entrar**: o login acontece na tela do Keycloak (pessoas de teste na seção "Identidade", ou crie uma conta e confirme o e-mail no Mailpit). O navegador nunca recebe token: só o cookie `__Host-user-manager` (`HttpOnly`, `Secure`, `SameSite=Strict`), e F5 não desloga.
+Abra http://localhost:5173: a capa pública mostra **Entrar na minha agenda** (ou **Abrir minha agenda**, se já houver sessão). Ao entrar, o login acontece na tela do Keycloak (pessoas de teste na seção "Identidade", ou crie uma conta e confirme o e-mail no Mailpit). O navegador nunca recebe token: só o cookie `__Host-user-manager` (`HttpOnly`, `Secure`, `SameSite=Strict`), e F5 não desloga.
 
 ## Frontend
 
 Organização feature-first:
 
+- `features/landing` — capa pública em `/`, animada (as animações param com "reduzir movimento" do sistema)  
 - `features/auth` — sessão do BFF (`/bff/user`), login e logout por redirecionamento, rotas protegidas  
 - `features/users` — minha conta (`/api/me`) e lista de usuários (`viewer`/`operator`; editar nome e excluir só `operator`)  
 - `features/audit` — listagem da trilha de auditoria  
 - `shared` — layout, sidebar, api client (manda `X-CSRF: 1` em toda chamada)  
 
 Proxy do Vite: `/api`, `/bff`, `/signin-oidc` e `/signout-callback-oidc` → BFF (`5080`), preservando o `Host` para o navegador ver uma origem só.
+
+Testes: `npm test` (Vitest + Testing Library, ambiente `jsdom`).
+
+Visual "Espresso": tokens de cor e fonte em `src/index.css`; fontes DM Serif Display e Inter servidas pelo próprio projeto (`public/fonts`, licença OFL ao lado), sem chamar Google Fonts.
 
 ## Backend (pontos importantes)
 
