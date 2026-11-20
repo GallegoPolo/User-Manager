@@ -233,6 +233,7 @@ Abra http://localhost:5173: a capa pública mostra **Entrar na minha agenda** (o
 Organização feature-first:
 
 - `features/landing` — capa pública em `/`, animada (as animações param com "reduzir movimento" do sistema)  
+- `features/contacts` — agenda em `/contacts` (`/api/me/contacts`): listar, criar, editar e excluir, com os erros da API embaixo de cada campo  
 - `features/auth` — sessão do BFF (`/bff/user`), login e logout por redirecionamento, rotas protegidas  
 - `features/users` — minha conta (`/api/me`) e lista de usuários (`viewer`/`operator`; editar nome e excluir só `operator`)  
 - `features/audit` — listagem da trilha de auditoria  
