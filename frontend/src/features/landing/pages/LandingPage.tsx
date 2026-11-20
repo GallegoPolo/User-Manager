@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/context/useAuth";
 import { AuditExampleFeed } from "../components/AuditExampleFeed";
 import { ContactOrbit } from "../components/ContactOrbit";
@@ -28,6 +28,19 @@ function MainAction() {
   );
 }
 
+function FailedLoginWarning() {
+  const { isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  if (isAuthenticated || searchParams.get("login") !== "falhou") return null;
+
+  return (
+    <p role="alert" className="notice notice--warn">
+      Esse login não pôde ser concluído. Se ele já foi feito em outra aba, use aquela aba; senão, entre de novo.
+    </p>
+  );
+}
+
 export function LandingPage() {
   return (
     <div className="landing">
@@ -51,6 +64,7 @@ export function LandingPage() {
               Uma agenda pessoal com login único, sessão segura e auditoria que chega mesmo quando algo
               falha no caminho.
             </p>
+            <FailedLoginWarning />
             <div className="landing-actions">
               <MainAction />
               <span className="landing-hint">com e-mail, GitHub ou Google</span>

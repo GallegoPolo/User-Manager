@@ -10,6 +10,8 @@ public static class BffAuthenticationExtensions
 {
     public const string SessionCookieName = "__Host-user-manager";
 
+    public const string FailedLoginHome = "/?login=falhou";
+
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(8);
 
     public static IServiceCollection AddBffAuthentication(this IServiceCollection services, IConfiguration configuration)
@@ -62,6 +64,7 @@ public static class BffAuthenticationExtensions
                 options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
                 options.NonceCookie.SameSite = SameSiteMode.Lax;
                 options.NonceCookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Events.OnRemoteFailure = SendHomeAfterFailedLogin;
             });
 
         services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -78,6 +81,18 @@ public static class BffAuthenticationExtensions
 
         if (context.Principal is null)
             await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    }
+
+    private static Task SendHomeAfterFailedLogin(RemoteFailureContext context)
+    {
+        context.HttpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger(typeof(BffAuthenticationExtensions))
+            .LogWarning(context.Failure, "Login remoto nao concluido; a pessoa volta para a pagina inicial");
+
+        context.Response.Redirect(FailedLoginHome);
+        context.HandleResponse();
+        return Task.CompletedTask;
     }
 
     private static Task RespondWith(HttpResponse response, int statusCode)

@@ -33,6 +33,21 @@ describe("LandingPage", () => {
     expect(screen.queryByRole("link", { name: "Abrir minha agenda" })).toBeNull();
   });
 
+  it("LandingPage_AfterFailedLogin_ExplainsAndOffersToEnterAgain", () => {
+    renderWithProviders(<LandingPage />, { session: null, route: "/?login=falhou" });
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Esse login não pôde ser concluído. Se ele já foi feito em outra aba, use aquela aba; senão, entre de novo.",
+    );
+    expect(screen.getByRole("button", { name: "Entrar na minha agenda" })).toBeDefined();
+  });
+
+  it("LandingPage_AfterFailedLoginButSignedInElsewhere_ShowsNoWarning", () => {
+    renderWithProviders(<LandingPage />, { session: aSession(), route: "/?login=falhou" });
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("LandingPage_AuditFeed_SaysItIsAnExample", () => {
     renderWithProviders(<LandingPage />, { session: null });
 
